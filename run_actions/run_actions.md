@@ -30,18 +30,37 @@ $HOME/ws/datadog-agent/.gitlab/build/lint/technical_linters.yml
 These can be constants for now. In the future we will read them from a configuration file.
 They may contain {var} expressions that get filled from per action variables.
 
+The section templates follow GitLab's custom collapsible section format
+(https://docs.gitlab.com/ci/jobs/job_logs/#custom-collapsible-sections).
+
 - ACTION_DIVIDER: default: ##### {ACTION_NAME}
-- SECTION_START_HEADER: default: {ESC}[0Ksection_start:{ACTION_ID}:{ACTION_NAME}[collapsed={PASSED}]
-- SECTION_BEGIN: default: {ESC}[0K[36;1mRunning {ACTION_NAME}{ESC}[0;m
-- SECTION_END: default: section_end:{ACTION_ID}:{ACTION_NAME}
+- SECTION_START_HEADER: default: {ESC}[0Ksection_start:{START_TIME}:{SECTION_NAME}[collapsed={PASSED}]\r{ESC}[0K
+- SECTION_BEGIN: default: {ESC}[36;1mRunning {ACTION_NAME}{ESC}[0;m
+- SECTION_END: default: {ESC}[0Ksection_end:{END_TIME}:{SECTION_NAME}\r{ESC}[0K
+
+## Per action variables
+
+- ACTION_NAME: the action name (the command itself if no name= was given)
+- ACTION_ID: 1000 + the action's index on the command line
+- SECTION_NAME: ACTION_NAME with every character outside [A-Za-z0-9_.-] replaced
+  by "_", followed by "-" and ACTION_ID. Always a legal and unique GitLab section name.
+- START_TIME: Unix timestamp (whole seconds) taken just before the action is started
+- END_TIME: Unix timestamp (whole seconds) taken just after the action exits
+- EXIT_CODE: the action's exit code (127 if it could not be started)
+- PASSED / FAILED: "true" or "false", depending on the exit code
+- ESC: the escape character (\x1b)
 
 ## Per action output
 
-The captured stdout/stder from each action must be emitted at the end of the process.
+The captured stdout/stderr from each action must be emitted at the end of the process.
+Each item below starts on a new line; SECTION_START_HEADER and SECTION_BEGIN share one
+line, because GitLab takes the section header text from the section_start line.
 
 - ACTION_DIVIDER
-- SECTION_START_HEADER
-- SECTION_BEGIN
+- SECTION_START_HEADER immediately followed by SECTION_BEGIN
 - stdout
 - stderr
 - SECTION_END
+
+stdout and stderr are emitted as raw bytes. If either is non-empty and does not end with
+a newline, one is added so that the next item starts on its own line.

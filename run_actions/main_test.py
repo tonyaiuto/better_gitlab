@@ -94,8 +94,8 @@ class MainTest(unittest.TestCase):
         code, out = _run(["bad=exit 3", "ok=echo ok"])
         self.assertEqual(code, 1)
         self.assertLess(out.index("##### ok\n"), out.index("##### bad\n"))
-        self.assertIn("section_start:1000:bad[collapsed=false]", out)
-        self.assertIn("section_start:1001:ok[collapsed=true]", out)
+        self.assertRegex(out, r"section_start:\d+:bad-1000\[collapsed=false\]")
+        self.assertRegex(out, r"section_start:\d+:ok-1001\[collapsed=true\]")
 
     def test_command_line_order(self):
         code, out = _run(["--show_errors_last=false", "bad=exit 3", "ok=echo ok"])
@@ -105,7 +105,7 @@ class MainTest(unittest.TestCase):
     def test_serial_failure(self):
         code, out = _run(["--serial", "bad=exit 3", "ok=echo ok"])
         self.assertEqual(code, 1)
-        self.assertIn("ok\nsection_end:1001:ok\n", out)
+        self.assertRegex(out, "ok\n\x1b\\[0Ksection_end:\\d+:ok-1001\r\x1b\\[0K\n")
 
 
 if __name__ == "__main__":

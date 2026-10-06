@@ -1,6 +1,7 @@
 import os
 import shutil
 import tempfile
+import time
 import unittest
 
 from run_actions import action as action_lib
@@ -16,7 +17,10 @@ class RunnerTest(unittest.TestCase):
 
     def test_run_one_captures_output(self):
         a = action_lib.parse_action("x=echo out; echo err >&2; exit 3", 1000)
+        before = int(time.time())
         r = runner.run_one(a)
+        after = int(time.time())
+        self.assertTrue(before <= r.start_time <= r.end_time <= after)
         self.assertEqual(r.exit_code, 3)
         self.assertEqual(r.stdout, b"out\n")
         self.assertEqual(r.stderr, b"err\n")

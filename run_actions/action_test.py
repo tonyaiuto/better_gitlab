@@ -46,14 +46,36 @@ class ParseActionTest(unittest.TestCase):
         self.assertEqual([a.name for a in actions], ["a", "y", "c"])
 
 
+class SectionNameTest(unittest.TestCase):
+    def test_legal_name_unchanged(self):
+        self.assertEqual(action_lib.section_name(Action(1000, "lint.go-vet_1", "c")), "lint.go-vet_1-1000")
+
+    def test_spaces_quotes_slashes(self):
+        a = Action(1002, "shellcheck './cmd/**/*.sh' \"x\"", "c")
+        self.assertEqual(action_lib.section_name(a), "shellcheck__._cmd_____.sh___x_-1002")
+
+    def test_unique_for_same_name(self):
+        self.assertNotEqual(
+            action_lib.section_name(Action(1000, "ls /", "c")),
+            action_lib.section_name(Action(1001, "ls /", "c")),
+        )
+
+    def test_non_ascii_and_control(self):
+        a = Action(1000, "caf\u00e9\ttab\nnl:x", "c")
+        self.assertEqual(action_lib.section_name(a), "caf__tab_nl_x-1000")
+
+
 class VariablesTest(unittest.TestCase):
     def test_passed(self):
-        r = ActionResult(Action(1000, "n", "c"), 0, b"", b"")
+        r = ActionResult(Action(1000, "n x", "c"), 0, b"", b"", start_time=17, end_time=19)
         self.assertEqual(
             action_lib.variables(r),
             {
-                "ACTION_NAME": "n",
+                "ACTION_NAME": "n x",
                 "ACTION_ID": "1000",
+                "SECTION_NAME": "n_x-1000",
+                "START_TIME": "17",
+                "END_TIME": "19",
                 "ESC": "\x1b",
                 "EXIT_CODE": "0",
                 "PASSED": "true",

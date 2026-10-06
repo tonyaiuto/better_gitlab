@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import subprocess
+import time
 
 from run_actions.action import Action, ActionResult
 
@@ -17,21 +18,28 @@ def run_one(action: Action) -> ActionResult:
     The environment and working directory are inherited. Never raises for
     a failure to start the process; that is reported as exit code 127.
     """
+    start_time = int(time.time())
     try:
         completed = subprocess.run(["bash", "-c", action.command], capture_output=True)
     except OSError as e:
+        end_time = int(time.time())
         message = "run_actions: failed to start action: %s\n" % e
         return ActionResult(
             action=action,
             exit_code=SPAWN_FAILURE_EXIT_CODE,
             stdout=b"",
             stderr=message.encode("utf-8", errors="replace"),
+            start_time=start_time,
+            end_time=end_time,
         )
+    end_time = int(time.time())
     return ActionResult(
         action=action,
         exit_code=completed.returncode,
         stdout=completed.stdout,
         stderr=completed.stderr,
+        start_time=start_time,
+        end_time=end_time,
     )
 
 
