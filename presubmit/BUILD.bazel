@@ -55,3 +55,20 @@ py_test(
     srcs = ["changed_files_test.py"],
     deps = [":changed_files"],
 )
+
+py_library(
+    name = "discover",
+    srcs = ["discover.py"],
+    visibility = ["//visibility:public"],
+    deps = [":source_tree"],
+)
+
+py_test(
+    name = "discover_test",
+    size = "small",
+    srcs = ["discover_test.py"],
+    deps = [
+        ":discover",
+        ":source_tree",
+    ],
+)
