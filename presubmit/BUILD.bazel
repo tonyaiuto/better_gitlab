@@ -41,3 +41,17 @@ py_test(
     srcs = ["source_tree_test.py"],
     deps = [":source_tree"],
 )
+
+py_library(
+    name = "changed_files",
+    srcs = ["changed_files.py"],
+    visibility = ["//visibility:public"],
+    deps = [":source_tree"],
+)
+
+py_test(
+    name = "changed_files_test",
+    size = "small",
+    srcs = ["changed_files_test.py"],
+    deps = [":changed_files"],
+)
