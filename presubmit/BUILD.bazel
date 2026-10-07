@@ -93,3 +93,25 @@ py_test(
         ":source_tree",
     ],
 )
+
+py_library(
+    name = "selection",
+    srcs = ["selection.py"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":discover",
+        ":loader",
+    ],
+)
+
+py_test(
+    name = "selection_test",
+    size = "small",
+    srcs = ["selection_test.py"],
+    deps = [
+        ":discover",
+        ":loader",
+        ":selection",
+        ":source_tree",
+    ],
+)
