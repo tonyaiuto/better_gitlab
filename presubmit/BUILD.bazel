@@ -28,3 +28,16 @@ py_test(
     srcs = ["testing_parser_test.py"],
     deps = [":testing_parser"],
 )
+
+py_library(
+    name = "source_tree",
+    srcs = ["source_tree.py"],
+    visibility = ["//visibility:public"],
+)
+
+py_test(
+    name = "source_tree_test",
+    size = "small",
+    srcs = ["source_tree_test.py"],
+    deps = [":source_tree"],
+)
