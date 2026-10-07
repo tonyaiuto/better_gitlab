@@ -66,12 +66,11 @@ def bool_str(value: bool) -> str:
 
 
 def section_name(action: Action) -> str:
-    """Returns a legal, unique GitLab section name for the action.
+    """Returns a legal, GitLab section name for the action.
 
-    Every character outside [A-Za-z0-9_.-] becomes '_', then '-<ACTION_ID>'
-    is appended so that distinct actions never share a section name.
+    Every character outside [A-Za-z0-9_.-] becomes '_'.
     """
-    return _SECTION_NAME_ILLEGAL_RE.sub("_", action.name) + "-" + str(action.id)
+    return _SECTION_NAME_ILLEGAL_RE.sub("_", action.name)
 
 
 def variables(result: ActionResult) -> dict:

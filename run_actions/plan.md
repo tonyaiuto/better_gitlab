@@ -69,9 +69,7 @@ This replaces the literal templates first written in the spec.
 
 - `START_TIME` and `END_TIME` are Unix timestamps, so GitLab can show how long
   each section took.
-- `SECTION_NAME` is the action name with every character outside
-  `[A-Za-z0-9_.-]` replaced by `_`, followed by `-{ACTION_ID}`. This keeps it a
-  legal GitLab section name and unique.
+- `SECTION_NAME` is the action name with every character outside `[A-Za-z0-9_.-]` replaced by `_`.
 - A newline is added before `section_end`, and between stdout and stderr, when
   the output doesn't already end with one.
 

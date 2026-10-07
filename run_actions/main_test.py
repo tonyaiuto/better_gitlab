@@ -6,7 +6,7 @@ import unittest
 from run_actions import main as main_lib
 
 
-class _FakeStdout(object):
+class _FakeStdout:
     """Stands in for sys.stdout, with a binary .buffer."""
 
     def __init__(self):

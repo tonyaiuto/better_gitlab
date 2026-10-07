@@ -6,8 +6,7 @@ import argparse
 import sys
 
 from run_actions import action as action_lib
-from run_actions import render
-from run_actions import runner
+from run_actions import render, runner
 
 _DESCRIPTION = """\
 Run several actions (single bash command lines), in parallel by default, and
