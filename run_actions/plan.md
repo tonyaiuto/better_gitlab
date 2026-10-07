@@ -14,8 +14,10 @@ last. It exits 1 if any action failed. The spec is in `run_actions.md`.
 - **Python is the reference implementation.** It may later be ported to Go or
   Rust, so the code is plain and explicit and uses only the standard library
   (no pip dependencies).
-- **It must run on Python 3.9.** The `--build_python_zip` output runs under the
-  system `python3`, which is 3.9.6 on macOS. Inside Bazel the toolchain is 3.12.
+- **The zip carries its own Python.** The `--build_python_zip` output bundles
+  the Bazel Python 3.12 runtime for the platform it was built on (macOS ARM
+  here) and runs with that, whatever `python3` launches it. So a zip only runs
+  on the platform it was built for: build on Linux for Linux.
 - **Bazel builds everything:** Bazel 8.4.2 and rules_python 1.6.3, with
   `.python-version` set to 3.12. Executables are built with:
   `bazel build //run_actions:run_actions --build_python_zip`
@@ -101,7 +103,9 @@ inside a datadog-agent checkout, to test merging those jobs into one GitLab job.
     `lint_releasenotes_unique_ids` and `lint_rtloader` only run when certain
     files change (`rules:`). That depends on selecting actions from changed
     files, which isn't built yet.
-- **Running it on another machine:** copy the script and `run_actions.zip`
+- **Running it on another machine:** the zip only runs on the platform it was
+  built on, so on a Linux machine build it there (or let the script build it
+  from a better_github checkout). Copy the script and `run_actions.zip`
   (from `bazel-bin/run_actions/`), then run:
   `./technical_linters.sh --runner ./run_actions.zip --repo <datadog-agent checkout>`.
   Other flags, such as `--serial`, are passed through to `run_actions`.
@@ -114,9 +118,9 @@ inside a datadog-agent checkout, to test merging those jobs into one GitLab job.
 
 ## Open issues and follow-ups
 
-- **The zip is about 16 MB.** It bundles Bazel's Python 3.12 runtime even
-  though the system `python3` runs it. It should be trimmed before it goes into
-  CI images.
+- **The zip is about 16 MB and platform-specific.** It bundles Bazel's
+  Python 3.12 runtime for the build platform. We need Linux builds for CI
+  images, and may want a smaller form.
 - **`**` globs:** with bash's `globstar` off, the default and the same as in
   GitLab CI, `**` matches only one directory level. macOS bash 3.2 has no
   `globstar` at all. We keep plain `bash -c` to match CI, and could add a
