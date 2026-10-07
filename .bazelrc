@@ -1,1 +1,5 @@
 common --enable_bzlmod
+
+# protoc is built from source; abseil needs a newer macOS deployment target
+# than the toolchain default.
+build --macos_minimum_os=12.0 --host_macos_minimum_os=12.0

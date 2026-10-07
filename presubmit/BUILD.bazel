@@ -1,0 +1,30 @@
+load("@protobuf//bazel:proto_library.bzl", "proto_library")
+load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
+load("@rules_python//python:py_library.bzl", "py_library")
+load("@rules_python//python:py_test.bzl", "py_test")
+
+proto_library(
+    name = "testing_proto",
+    srcs = ["testing.proto"],
+    visibility = ["//visibility:public"],
+)
+
+py_proto_library(
+    name = "testing_py_pb2",
+    visibility = ["//visibility:public"],
+    deps = [":testing_proto"],
+)
+
+py_library(
+    name = "testing_parser",
+    srcs = ["testing_parser.py"],
+    visibility = ["//visibility:public"],
+    deps = [":testing_py_pb2"],
+)
+
+py_test(
+    name = "testing_parser_test",
+    size = "small",
+    srcs = ["testing_parser_test.py"],
+    deps = [":testing_parser"],
+)

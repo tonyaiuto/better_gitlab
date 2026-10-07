@@ -1,0 +1,64 @@
+// Schema for TESTING files, written in textproto format.
+//
+// A TESTING file applies to all files in its directory and below.
+
+syntax = "proto3";
+
+package better_github.presubmit;
+
+// The top-level message of a TESTING file.
+message Testing {
+  // Paths, relative to the root of the source tree, of other TESTING files
+  // whose contents (definitions and presubmit blocks) are brought into this
+  // one.
+  repeated string include = 1;
+
+  repeated Presubmit presubmit = 2;
+
+  // Definitions, referenced by name from presubmit blocks in any file.
+  repeated Action action = 3;
+  repeated TestSuite test_suite = 4;
+}
+
+// Selects actions and test suites to run when matching files change.
+message Presubmit {
+  // If given, only changed files matching one of these (re.search against the
+  // repo-relative path) apply to this block.
+  repeated string include_regex = 1;
+
+  // Changed files matching one of these are dropped, after include_regex.
+  repeated string exclude_regex = 2;
+
+  // Names of Actions to run.
+  repeated string check_action = 3;
+
+  // Names of TestSuites to run.
+  repeated string check_tests = 4;
+}
+
+// A command to run.
+message Action {
+  // Required. Unique across all TESTING files.
+  string name = 1;
+
+  // Required. May contain {FILES}, replaced by all the files that selected
+  // this action, or {EACH_FILE}, which runs the command once per file.
+  string command = 2;
+
+  // Machine types to run on. If empty, the default machine types are used.
+  repeated string machine_type = 3;
+}
+
+// A set of Bazel test targets.
+message TestSuite {
+  // Required. Unique across all TESTING files.
+  string name = 1;
+
+  // Bazel test patterns.
+  repeated string tests = 2;
+
+  repeated string test_args = 3;
+
+  // Bazel platforms to test on.
+  repeated string platform = 4;
+}

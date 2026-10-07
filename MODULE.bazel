@@ -1,6 +1,10 @@
 module(name = "better_github")
 
+# rules_python must come before protobuf: on macOS, the reverse order picks a
+# toolchain that crashes Bazel 8.4.2 (InvalidDottedVersionException in
+# apple_support's exec_libtool).
 bazel_dep(name = "rules_python", version = "1.6.3")
+bazel_dep(name = "protobuf", version = "31.1")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.defaults(python_version_file = "//:.python-version")
