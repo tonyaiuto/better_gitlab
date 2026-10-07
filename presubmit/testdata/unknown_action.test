@@ -1,0 +1,10 @@
+A presubmit block naming an action that no loaded file defines.
+
+== tree
+/a/TESTING <<<END
+presubmit { check_action: "lint" }
+END
+== changed
+a/x.c
+== error
+a/TESTING: check_action names unknown action 'lint'

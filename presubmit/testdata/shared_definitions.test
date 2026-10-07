@@ -1,0 +1,53 @@
+Definitions in a shared file, included from two directories. lint is selected
+by both, so its files are unioned. The unit test suites merge by test_args.
+
+== tree
+/tools/TESTING <<<END
+action { name: "lint" command: "lint {FILES}" }
+action { name: "fmt" command: "fmt --check {EACH_FILE}" machine_type: "linux" }
+test_suite { name: "go_unit" tests: "//pkg/..." test_args: "--test_output=errors" }
+test_suite { name: "cmd_unit" tests: "//cmd/..." test_args: "--test_output=errors" }
+test_suite { name: "e2e" tests: "//test/e2e/..." platform: "//p:linux" platform: "//p:mac" }
+END
+/pkg/TESTING <<<END
+include: "tools/TESTING"
+presubmit {
+  include_regex: "\\.go$"
+  exclude_regex: "_generated\\.go$"
+  check_action: "lint"
+  check_action: "fmt"
+  check_tests: "go_unit"
+}
+END
+/cmd/TESTING <<<END
+include: "tools/TESTING"
+presubmit { check_action: "lint" check_tests: "cmd_unit" }
+presubmit { include_regex: "^cmd/agent/" check_tests: "e2e" }
+END
+/pkg/a.go
+/pkg/b_generated.go
+/cmd/main.go
+/cmd/agent/run.go
+== changed
+pkg/a.go
+pkg/b_generated.go
+pkg/README.md
+cmd/agent/run.go
+docs/index.md
+== expected
+{
+  "changed_files": ["pkg/a.go", "pkg/b_generated.go", "pkg/README.md", "cmd/agent/run.go", "docs/index.md"],
+  "testing_files": ["cmd/TESTING", "pkg/TESTING"],
+  "actions": [
+    {"name": "fmt", "machine_type": "linux", "files": ["pkg/a.go"],
+     "commands": ["fmt --check pkg/a.go"]},
+    {"name": "lint", "machine_type": "default", "files": ["cmd/agent/run.go", "pkg/a.go"],
+     "commands": ["lint cmd/agent/run.go pkg/a.go"]}
+  ],
+  "test_runs": [
+    {"platform": "", "test_args": ["--test_output=errors"],
+     "tests": ["//cmd/...", "//pkg/..."], "suites": ["cmd_unit", "go_unit"]},
+    {"platform": "//p:linux", "test_args": [], "tests": ["//test/e2e/..."], "suites": ["e2e"]},
+    {"platform": "//p:mac", "test_args": [], "tests": ["//test/e2e/..."], "suites": ["e2e"]}
+  ]
+}

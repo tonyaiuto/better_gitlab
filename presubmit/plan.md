@@ -122,6 +122,25 @@ then commit.
 Test data for steps 4–8 lives in `presubmit/testdata/*.tree` files, each with
 its changed files and expected names, so each case is a single file.
 
+## Status
+
+All 8 steps are done, each in its own commit on branch `presubmit`.
+
+Differences from the plan above:
+- `select.py` is `selection.py`, so it can't shadow the standard library's
+  `select` module.
+- A test suite with no `tests` still produces a test run with no patterns.
+- The CLI defaults to `--ref origin/main...HEAD`. `--file PATH` (repeatable)
+  skips git and uses the given changed files.
+- `cli.main` also takes `add_arguments(parser)`, so a replacement source of
+  changed files can add its own flags.
+
+Run it with:
+`bazel build //presubmit:presubmit --build_python_zip`, then
+`python3 bazel-bin/presubmit/presubmit.zip --repo <checkout> [--ref REF]`.
+It prints JSON with `changed_files`, `testing_files`, `actions` and
+`test_runs`.
+
 ## Not in this phase
 
 - Turning the plan into GitLab jobs and `run_actions` calls.

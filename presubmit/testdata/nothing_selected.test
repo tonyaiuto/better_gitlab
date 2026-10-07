@@ -1,0 +1,16 @@
+TESTING files apply, but no presubmit block matches the changed files.
+
+== tree
+/TESTING <<<END
+action { name: "golint" command: "golangci-lint run" }
+presubmit { include_regex: "\\.go$" check_action: "golint" }
+END
+== changed
+README.md
+== expected
+{
+  "changed_files": ["README.md"],
+  "testing_files": ["TESTING"],
+  "actions": [],
+  "test_runs": []
+}

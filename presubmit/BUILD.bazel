@@ -135,3 +135,46 @@ py_test(
         ":source_tree",
     ],
 )
+
+py_library(
+    name = "cli",
+    srcs = ["cli.py"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":changed_files",
+        ":discover",
+        ":loader",
+        ":plan",
+        ":selection",
+        ":source_tree",
+    ],
+)
+
+py_binary(
+    name = "presubmit",
+    srcs = ["main.py"],
+    main = "main.py",
+    visibility = ["//visibility:public"],
+    deps = [":cli"],
+)
+
+py_test(
+    name = "cli_test",
+    size = "small",
+    srcs = ["cli_test.py"],
+    deps = [
+        ":changed_files",
+        ":cli",
+    ],
+)
+
+py_test(
+    name = "golden_test",
+    size = "small",
+    srcs = ["golden_test.py"],
+    data = glob(["testdata/*.test"]),
+    deps = [
+        ":cli",
+        ":source_tree",
+    ],
+)
