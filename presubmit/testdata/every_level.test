@@ -1,0 +1,38 @@
+foo/bar/baz/ball/bat/foo.c: a TESTING file at every level applies.
+
+== tree
+/TESTING <<<END
+action { name: "root" command: "echo root" }
+action { name: "foo" command: "echo foo" }
+action { name: "bat" command: "echo {FILES}" }
+presubmit { check_action: "root" }
+END
+/foo/TESTING <<<END
+presubmit { check_action: "foo" }
+END
+/foo/bar/TESTING
+/foo/bar/baz/TESTING
+/foo/bar/baz/ball/TESTING
+/foo/bar/baz/ball/bat/TESTING <<<END
+presubmit { check_action: "bat" }
+END
+/foo/other/TESTING <<<END
+presubmit { check_action: "nope" }
+END
+== changed
+foo/bar/baz/ball/bat/foo.c
+== expected
+{
+  "changed_files": ["foo/bar/baz/ball/bat/foo.c"],
+  "testing_files": ["TESTING", "foo/TESTING", "foo/bar/TESTING", "foo/bar/baz/TESTING",
+                    "foo/bar/baz/ball/TESTING", "foo/bar/baz/ball/bat/TESTING"],
+  "actions": [
+    {"name": "bat", "machine_type": "default", "files": ["foo/bar/baz/ball/bat/foo.c"],
+     "commands": ["echo foo/bar/baz/ball/bat/foo.c"]},
+    {"name": "foo", "machine_type": "default", "files": ["foo/bar/baz/ball/bat/foo.c"],
+     "commands": ["echo foo"]},
+    {"name": "root", "machine_type": "default", "files": ["foo/bar/baz/ball/bat/foo.c"],
+     "commands": ["echo root"]}
+  ],
+  "test_runs": []
+}

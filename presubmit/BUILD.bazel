@@ -1,0 +1,180 @@
+load("@protobuf//bazel:proto_library.bzl", "proto_library")
+load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
+load("@rules_python//python:py_library.bzl", "py_library")
+load("@rules_python//python:py_test.bzl", "py_test")
+
+proto_library(
+    name = "testing_proto",
+    srcs = ["testing.proto"],
+    visibility = ["//visibility:public"],
+)
+
+py_proto_library(
+    name = "testing_py_pb2",
+    visibility = ["//visibility:public"],
+    deps = [":testing_proto"],
+)
+
+py_library(
+    name = "testing_parser",
+    srcs = ["testing_parser.py"],
+    visibility = ["//visibility:public"],
+    deps = [":testing_py_pb2"],
+)
+
+py_test(
+    name = "testing_parser_test",
+    size = "small",
+    srcs = ["testing_parser_test.py"],
+    deps = [":testing_parser"],
+)
+
+py_library(
+    name = "source_tree",
+    srcs = ["source_tree.py"],
+    visibility = ["//visibility:public"],
+)
+
+py_test(
+    name = "source_tree_test",
+    size = "small",
+    srcs = ["source_tree_test.py"],
+    deps = [":source_tree"],
+)
+
+py_library(
+    name = "changed_files",
+    srcs = ["changed_files.py"],
+    visibility = ["//visibility:public"],
+    deps = [":source_tree"],
+)
+
+py_test(
+    name = "changed_files_test",
+    size = "small",
+    srcs = ["changed_files_test.py"],
+    deps = [":changed_files"],
+)
+
+py_library(
+    name = "discover",
+    srcs = ["discover.py"],
+    visibility = ["//visibility:public"],
+    deps = [":source_tree"],
+)
+
+py_test(
+    name = "discover_test",
+    size = "small",
+    srcs = ["discover_test.py"],
+    deps = [
+        ":discover",
+        ":source_tree",
+    ],
+)
+
+py_library(
+    name = "loader",
+    srcs = ["loader.py"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":source_tree",
+        ":testing_parser",
+        ":testing_py_pb2",
+    ],
+)
+
+py_test(
+    name = "loader_test",
+    size = "small",
+    srcs = ["loader_test.py"],
+    deps = [
+        ":loader",
+        ":source_tree",
+    ],
+)
+
+py_library(
+    name = "selection",
+    srcs = ["selection.py"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":discover",
+        ":loader",
+    ],
+)
+
+py_test(
+    name = "selection_test",
+    size = "small",
+    srcs = ["selection_test.py"],
+    deps = [
+        ":discover",
+        ":loader",
+        ":selection",
+        ":source_tree",
+    ],
+)
+
+py_library(
+    name = "plan",
+    srcs = ["plan.py"],
+    visibility = ["//visibility:public"],
+    deps = [":loader"],
+)
+
+py_test(
+    name = "plan_test",
+    size = "small",
+    srcs = ["plan_test.py"],
+    deps = [
+        ":discover",
+        ":loader",
+        ":plan",
+        ":selection",
+        ":source_tree",
+    ],
+)
+
+py_library(
+    name = "cli",
+    srcs = ["cli.py"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":changed_files",
+        ":discover",
+        ":loader",
+        ":plan",
+        ":selection",
+        ":source_tree",
+    ],
+)
+
+py_binary(
+    name = "presubmit",
+    srcs = ["main.py"],
+    main = "main.py",
+    visibility = ["//visibility:public"],
+    deps = [":cli"],
+)
+
+py_test(
+    name = "cli_test",
+    size = "small",
+    srcs = ["cli_test.py"],
+    deps = [
+        ":changed_files",
+        ":cli",
+    ],
+)
+
+py_test(
+    name = "golden_test",
+    size = "small",
+    srcs = ["golden_test.py"],
+    data = glob(["testdata/*.test"]),
+    deps = [
+        ":cli",
+        ":source_tree",
+    ],
+)
