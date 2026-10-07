@@ -115,3 +115,23 @@ py_test(
         ":source_tree",
     ],
 )
+
+py_library(
+    name = "plan",
+    srcs = ["plan.py"],
+    visibility = ["//visibility:public"],
+    deps = [":loader"],
+)
+
+py_test(
+    name = "plan_test",
+    size = "small",
+    srcs = ["plan_test.py"],
+    deps = [
+        ":discover",
+        ":loader",
+        ":plan",
+        ":selection",
+        ":source_tree",
+    ],
+)
