@@ -4,6 +4,15 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
+
+# This the py portable app thing seems very broken or I am not
+# using it right. This is needed to get imports to resolve.
+prog_root = str(Path(sys.argv[0]).parent.parent)
+sys.path.append(prog_root)
+
+# for path in sys.path:
+#    print(" path", path)
 
 from run_actions import action as action_lib
 from run_actions import render, runner

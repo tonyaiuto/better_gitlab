@@ -1,10 +1,12 @@
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
+load("@rules_python//python/zipapp:py_zipapp_binary.bzl", "py_zipapp_binary")
 
 py_library(
     name = "run_actions_lib",
     srcs = [
+        "__init__.py",
         "action.py",
         "main.py",
         "render.py",
@@ -15,11 +17,16 @@ py_library(
 )
 
 py_binary(
-    name = "run_actions",
+    name = "run_actions_bin",
     srcs = ["main.py"],
     main = "main.py",
     visibility = ["//visibility:public"],
     deps = [":run_actions_lib"],
+)
+
+py_zipapp_binary(
+    name = "run_actions",
+    binary = ":run_actions_bin",
 )
 
 [
