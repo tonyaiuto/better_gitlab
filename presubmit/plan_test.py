@@ -125,7 +125,7 @@ test_suite { name: "unit" tests: "//b/..." tests: "//a/..." }
 presubmit { check_tests: "unit" }
 END
 """, ["a.c"])
-        self.assertEqual(p.test_runs, [TestRun("", [], ["//a/...", "//b/..."], ["unit"])])
+        self.assertEqual(p.test_runs, [TestRun("", [], ["//a/...", "//b/..."], ["unit"], False)])
         self.assertEqual(p.actions, [])
 
     def test_one_run_per_platform(self):
@@ -136,8 +136,8 @@ presubmit { check_tests: "unit" }
 END
 """, ["a.c"])
         self.assertEqual(p.test_runs, [
-            TestRun("//p:linux", [], ["//..."], ["unit"]),
-            TestRun("//p:mac", [], ["//..."], ["unit"]),
+            TestRun("//p:linux", [], ["//..."], ["unit"], False),
+            TestRun("//p:mac", [], ["//..."], ["unit"], False),
         ])
 
     def test_same_args_and_platform_merge(self):
@@ -152,9 +152,9 @@ presubmit { check_tests: "d_tests" }
 END
 """, ["x.c"])
         self.assertEqual(p.test_runs, [
-            TestRun("", [], ["//c/..."], ["c_tests"]),
-            TestRun("", ["--test_output=errors"], ["//a/...", "//b/..."], ["a_tests", "b_tests"]),
-            TestRun("//p:linux", [], ["//a/..."], ["d_tests"]),
+            TestRun("", [], ["//c/..."], ["c_tests"], False),
+            TestRun("", ["--test_output=errors"], ["//a/...", "//b/..."], ["a_tests", "b_tests"], False),
+            TestRun("//p:linux", [], ["//a/..."], ["d_tests"], False),
         ])
 
     def test_test_args_order_matters(self):
@@ -177,7 +177,32 @@ END
 presubmit { check_tests: "unit" }
 END
 """, ["a/x.c"])
-        self.assertEqual(p.test_runs, [TestRun("", [], ["//..."], ["unit"])])
+        self.assertEqual(p.test_runs, [TestRun("", [], ["//..."], ["unit"], False)])
+
+    def test_coverage_suite_separated_from_test_suite(self):
+        p = _plan("""
+/TESTING <<<END
+test_suite { name: "unit" tests: "//a/..." }
+test_suite { name: "unit_coverage" tests: "//a/..." coverage: true }
+presubmit { check_tests: "unit" check_tests: "unit_coverage" }
+END
+""", ["a.c"])
+        self.assertEqual(p.test_runs, [
+            TestRun("", [], ["//a/..."], ["unit"], False),
+            TestRun("", [], ["//a/..."], ["unit_coverage"], True),
+        ])
+
+    def test_coverage_suites_merge_like_test_suites(self):
+        p = _plan("""
+/TESTING <<<END
+test_suite { name: "a_cov" tests: "//a/..." coverage: true }
+test_suite { name: "b_cov" tests: "//b/..." coverage: true }
+presubmit { check_tests: "a_cov" check_tests: "b_cov" }
+END
+""", ["x.c"])
+        self.assertEqual(p.test_runs, [
+            TestRun("", [], ["//a/...", "//b/..."], ["a_cov", "b_cov"], True),
+        ])
 
 
 class BuildPlanEmptyTest(unittest.TestCase):

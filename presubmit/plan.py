@@ -49,6 +49,8 @@ class TestRun:
     tests: list
     # Names of the suites merged into this run, sorted.
     suites: list
+    # If true, run `bazel coverage` instead of `bazel test`.
+    coverage: bool
 
 
 @dataclass
@@ -79,7 +81,7 @@ def build_plan(
     """Builds the plan for the selections made from loaded."""
     # (action name, machine type) -> set of files
     action_files = {}
-    # (tuple(test_args), platform) -> (set of test patterns, set of suite names)
+    # (tuple(test_args), platform, coverage) -> (set of test patterns, set of suite names)
     test_groups = {}
 
     for selected in selections:
@@ -90,7 +92,7 @@ def build_plan(
         for name in selected.test_suites:
             suite = loaded.test_suites[name]
             for platform in list(suite.platform) or [""]:
-                key = (tuple(suite.test_args), platform)
+                key = (tuple(suite.test_args), platform, suite.coverage)
                 tests, suites = test_groups.setdefault(key, (set(), set()))
                 tests.update(suite.tests)
                 suites.add(name)
@@ -105,12 +107,13 @@ def build_plan(
             commands=expand_command(name, loaded.actions[name].command, sorted_files)))
 
     test_runs = []
-    for (test_args, platform), (tests, suites) in sorted(
-            test_groups.items(), key=lambda item: (item[0][1], item[0][0])):
+    for (test_args, platform, coverage), (tests, suites) in sorted(
+            test_groups.items(), key=lambda item: (item[0][1], item[0][0], item[0][2])):
         test_runs.append(TestRun(
             platform=platform,
             test_args=list(test_args),
             tests=sorted(tests),
-            suites=sorted(suites)))
+            suites=sorted(suites),
+            coverage=coverage))
 
     return Plan(actions=actions, test_runs=test_runs)

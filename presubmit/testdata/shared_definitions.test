@@ -46,8 +46,8 @@ docs/index.md
   ],
   "test_runs": [
     {"platform": "", "test_args": ["--test_output=errors"],
-     "tests": ["//cmd/...", "//pkg/..."], "suites": ["cmd_unit", "go_unit"]},
-    {"platform": "//p:linux", "test_args": [], "tests": ["//test/e2e/..."], "suites": ["e2e"]},
-    {"platform": "//p:mac", "test_args": [], "tests": ["//test/e2e/..."], "suites": ["e2e"]}
+     "tests": ["//cmd/...", "//pkg/..."], "suites": ["cmd_unit", "go_unit"], "coverage": false},
+    {"platform": "//p:linux", "test_args": [], "tests": ["//test/e2e/..."], "suites": ["e2e"], "coverage": false},
+    {"platform": "//p:mac", "test_args": [], "tests": ["//test/e2e/..."], "suites": ["e2e"], "coverage": false}
   ]
 }

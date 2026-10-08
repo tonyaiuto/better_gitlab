@@ -61,4 +61,7 @@ message TestSuite {
 
   // Bazel platforms to test on.
   repeated string platform = 4;
+
+  // If set, run `bazel coverage` instead of `bazel test`.
+  bool coverage = 5;
 }
