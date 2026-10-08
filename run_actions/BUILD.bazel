@@ -6,6 +6,7 @@ load("@rules_python//python/zipapp:py_zipapp_binary.bzl", "py_zipapp_binary")
 py_library(
     name = "run_actions_lib",
     srcs = [
+        "__init__.py",
         "action.py",
         "main.py",
         "render.py",
