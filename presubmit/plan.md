@@ -136,7 +136,8 @@ Differences from the plan above:
   changed files can add its own flags.
 
 Run it with:
-`bazel build //presubmit:presubmit --build_python_zip`, then
+`bazel build //presubmit:presubmit` (a `py_zipapp_binary` that bundles its own
+Python, so the zip is platform-specific), then
 `python3 bazel-bin/presubmit/presubmit.zip --repo <checkout> [--ref REF]`.
 It prints JSON with `changed_files`, `testing_files`, `actions` and
 `test_runs`.

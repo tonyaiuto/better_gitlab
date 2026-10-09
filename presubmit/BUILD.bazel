@@ -3,6 +3,7 @@ load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
+load("@rules_python//python/zipapp:py_zipapp_binary.bzl", "py_zipapp_binary")
 
 proto_library(
     name = "testing_proto",
@@ -152,11 +153,16 @@ py_library(
 )
 
 py_binary(
-    name = "presubmit",
+    name = "presubmit_bin",
     srcs = ["main.py"],
     main = "main.py",
     visibility = ["//visibility:public"],
     deps = [":cli"],
+)
+
+py_zipapp_binary(
+    name = "presubmit",
+    binary = ":presubmit_bin",
 )
 
 py_test(
