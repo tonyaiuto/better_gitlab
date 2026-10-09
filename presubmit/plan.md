@@ -128,7 +128,7 @@ but a job is just a name, a kind and an `argv`, so other runners can use it.
 
 To validate a set of TESTING files against real history before a repo adopts
 them. For datadog-agent the TESTING files are on branch `aiuto/new_ci`
-(DataDog/datadog-agent#57886), checked out at `~/ws/datadog-agent-new_ci`.
+(DataDog/datadog-agent#57886), checked out in the worktree `~/worktrees/new_ci`.
 
 1. `pr_test_history/pr_files.py --out -` lists past PRs with their files and
    GitHub status (`added`, `modified`, `removed`, `renamed` +
@@ -159,7 +159,7 @@ planned patterns.
 cd pr_test_history
 ./pr_files.py --out - \
   | python3 ~/ws/better_gitlab/bazel-bin/presubmit/backtest.zip \
-      --repo ~/ws/datadog-agent-new_ci \
+      --repo ~/worktrees/new_ci \
       --out normalized/backtest_jobs.json
 ./coverage.py normalized/backtest_jobs.json          # or --json
 ```
