@@ -203,3 +203,39 @@ py_test(
         ":source_tree",
     ],
 )
+
+py_library(
+    name = "backtest_lib",
+    srcs = ["backtest.py"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":cli",
+        ":discover",
+        ":jobs",
+        ":plan",
+        ":source_tree",
+    ],
+)
+
+py_test(
+    name = "backtest_test",
+    size = "small",
+    srcs = ["backtest_test.py"],
+    deps = [
+        ":backtest_lib",
+        ":source_tree",
+    ],
+)
+
+py_binary(
+    name = "backtest_bin",
+    srcs = ["backtest_main.py"],
+    main = "backtest_main.py",
+    visibility = ["//visibility:public"],
+    deps = [":backtest_lib"],
+)
+
+py_zipapp_binary(
+    name = "backtest",
+    binary = ":backtest_bin",
+)

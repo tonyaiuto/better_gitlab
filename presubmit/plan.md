@@ -46,6 +46,7 @@ work out the smallest set of actions and Bazel test runs to execute.
 | `select.py` | evaluate each presubmit block's regexes against the in-scope files → (action or suite name, files) |
 | `plan.py` | aggregation and expansion → `Plan` (a list of actions and a list of test runs) |
 | `jobs.py` | `Plan` → jobs: one `run_actions` job per machine type, one `bazel test`/`coverage` job per test run |
+| `backtest.py` | plans jobs for each past PR in a pr_files.py dump (see Backtest) |
 | `cli.py` | `main(changed_files_factory)`; prints the plan as JSON, sorted so the output is the same every run |
 | `main.py` | default binary: wires in `GitDiffChangedFiles` |
 
@@ -122,6 +123,54 @@ but a job is just a name, a kind and an `argv`, so other runners can use it.
   `--bazel`), e.g. `--run_actions "python3 run_actions.zip --ddci"`.
 - The CLI JSON keeps `actions` and `test_runs` next to `jobs`, so a surprising
   job can be traced back to the plan.
+
+## Backtest (`backtest.py`)
+
+To validate a set of TESTING files against real history before a repo adopts
+them. For datadog-agent the TESTING files are on branch `aiuto/new_ci`
+(DataDog/datadog-agent#57886), checked out at `~/ws/datadog-agent-new_ci`.
+
+1. `pr_test_history/pr_files.py --out -` lists past PRs with their files and
+   GitHub status (`added`, `modified`, `removed`, `renamed` +
+   `previous_filename`).
+2. `backtest.zip --repo <checkout>` reads that on stdin and writes, per PR,
+   the whole CLI result (changed and deleted files, TESTING files, actions,
+   test runs, jobs), or `error` for that PR alone. A count of jobs by name
+   goes to stderr. Only TESTING files are read from `--repo`, so the
+   checkout's other files need not match the PRs' base commits, and
+   uncommitted TESTING edits are picked up.
+3. `pr_test_history/coverage.py` compares those jobs with what actually
+   failed on each PR (flakes hidden), through `job_map.json`, which says which
+   planned job covers each GitLab job; a GitLab job with no rule is covered by
+   an action of the same name. Each real failed job and test is `covered`,
+   `uncovered` (the mapping names what would catch it, but this PR's plan
+   lacks it: a selector miss), `unmapped` (nothing in the TESTING files
+   stands in for that job yet), or `ignored` (not a test signal, e.g. KMT
+   cleanup).
+
+The jobs are kept as a separate file so part 1 can be debugged on its own.
+
+Coverage is judged per GitLab job, not per Bazel target: the CI data names
+the job a test failed in, not its target. So any planned `bazel test` covers
+any failed `bazel:test:*` job, even if the failing target is outside the
+planned patterns.
+
+```
+cd pr_test_history
+./pr_files.py --out - \
+  | python3 ~/ws/better_gitlab/bazel-bin/presubmit/backtest.zip \
+      --repo ~/ws/datadog-agent-new_ci \
+      --out normalized/backtest_jobs.json
+./coverage.py normalized/backtest_jobs.json          # or --json
+```
+
+First run (20-PR pilot, `aiuto/new_ci` at 0268910786): 19 PRs get the
+technical linters, 12 a `bazel test`, 9 a `bazel coverage`. 12 real failed
+jobs covered, 2 uncovered, 110 unmapped (docker builds, e2e, KMT), 32 ignored.
+The uncovered ones are `bazel:test:*` failures on PRs that changed no
+directory with a test suite: #57260 (`omnibus/`, `packages/`,
+`.gitlab-ci.yml`) and #57789 (integrations-core digest). All 125 real failed
+tests are in KMT or e2e jobs, so all are unmapped.
 
 ## Steps
 
