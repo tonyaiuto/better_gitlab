@@ -139,12 +139,30 @@ py_test(
 )
 
 py_library(
+    name = "jobs",
+    srcs = ["jobs.py"],
+    visibility = ["//visibility:public"],
+    deps = [":plan"],
+)
+
+py_test(
+    name = "jobs_test",
+    size = "small",
+    srcs = ["jobs_test.py"],
+    deps = [
+        ":jobs",
+        ":plan",
+    ],
+)
+
+py_library(
     name = "cli",
     srcs = ["cli.py"],
     visibility = ["//visibility:public"],
     deps = [
         ":changed_files",
         ":discover",
+        ":jobs",
         ":loader",
         ":plan",
         ":selection",

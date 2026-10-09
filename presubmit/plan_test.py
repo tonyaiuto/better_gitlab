@@ -117,6 +117,30 @@ END
         self.assertEqual([a.name for a in p.actions], ["alpha", "zeta"])
 
 
+class BuildPlanDeletedFilesTest(unittest.TestCase):
+    SPEC = """
+/TESTING <<<END
+action { name: "lint" command: "lint {FILES}" }
+action { name: "fmt" command: "fmt {EACH_FILE}" }
+action { name: "gen" command: "make gen" }
+presubmit { check_action: "lint" check_action: "fmt" check_action: "gen" }
+END
+"""
+
+    def test_deleted_files_not_expanded(self):
+        p = _plan(self.SPEC, ["a.c", "gone.c"], deleted_files=["gone.c"])
+        self.assertEqual(p.actions, [
+            PlannedAction("fmt", "default", ["a.c", "gone.c"], ["fmt a.c"]),
+            PlannedAction("gen", "default", ["a.c", "gone.c"], ["make gen"]),
+            PlannedAction("lint", "default", ["a.c", "gone.c"], ["lint a.c"]),
+        ])
+
+    def test_only_deleted_files(self):
+        p = _plan(self.SPEC, ["gone.c"], deleted_files=["gone.c"])
+        self.assertEqual({a.name: a.commands for a in p.actions},
+                         {"fmt": [], "gen": ["make gen"], "lint": []})
+
+
 class BuildPlanTestRunsTest(unittest.TestCase):
     def test_no_platform(self):
         p = _plan("""

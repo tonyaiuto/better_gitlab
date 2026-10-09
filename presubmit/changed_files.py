@@ -23,19 +23,34 @@ class ChangedFiles:
         """Returns the changed paths, relative to the repo root, sorted and unique."""
         raise NotImplementedError
 
+    def deleted(self) -> list:
+        """Returns the paths in get() that the PR deletes, sorted and unique.
+
+        Deleted files still select presubmit blocks, but are not passed to
+        commands through {FILES} or {EACH_FILE}. The default is none.
+        """
+        return []
+
 
 def _clean(paths) -> list:
     return sorted(set(source_tree.normalize_path(p) for p in paths))
 
 
 class FixedChangedFiles(ChangedFiles):
-    """A fixed list of paths, for tests."""
+    """A fixed list of paths, for tests and for callers that already know them.
 
-    def __init__(self, paths):
-        self.paths = _clean(paths)
+    deleted paths are added to the changed paths if they are not there already.
+    """
+
+    def __init__(self, paths, deleted=()):
+        self.deleted_paths = _clean(deleted)
+        self.paths = _clean(list(paths) + self.deleted_paths)
 
     def get(self) -> list:
         return list(self.paths)
+
+    def deleted(self) -> list:
+        return list(self.deleted_paths)
 
 
 class GitDiffChangedFiles(ChangedFiles):
@@ -45,8 +60,9 @@ class GitDiffChangedFiles(ChangedFiles):
     against origin/main) and "origin/main...HEAD" (HEAD against its merge base
     with origin/main) both work.
 
-    Deleted files are included. Renames are reported as both the old and the
-    new path, so the TESTING files of both locations apply.
+    Deleted files are included, and also listed by deleted(). Renames are
+    reported as both the old and the new path, so the TESTING files of both
+    locations apply; the old path counts as deleted.
     """
 
     def __init__(self, ref: str, repo_root: str = ".", git: str = "git"):
@@ -55,9 +71,15 @@ class GitDiffChangedFiles(ChangedFiles):
         self.git = git
 
     def get(self) -> list:
+        return self._diff()
+
+    def deleted(self) -> list:
+        return self._diff("--diff-filter=D")
+
+    def _diff(self, *flags) -> list:
         command = [
             self.git, "-C", self.repo_root,
-            "diff", "--name-only", "--no-renames", "-z", self.ref, "--",
+            "diff", "--name-only", "--no-renames", "-z", *flags, self.ref, "--",
         ]
         try:
             result = subprocess.run(command, capture_output=True)

@@ -1,6 +1,6 @@
 # presubmit — plan
 
-Last updated: 2026-10-06. Requirements: `/testing_requirements.md`.
+Last updated: 2026-10-09. Requirements: `/testing_requirements.md`.
 
 ## Goal
 
@@ -45,6 +45,7 @@ work out the smallest set of actions and Bazel test runs to execute.
 | `loader.py` | parse files, resolve includes, build the global definition registry, validate |
 | `select.py` | evaluate each presubmit block's regexes against the in-scope files → (action or suite name, files) |
 | `plan.py` | aggregation and expansion → `Plan` (a list of actions and a list of test runs) |
+| `jobs.py` | `Plan` → jobs: one `run_actions` job per machine type, one `bazel test`/`coverage` job per test run |
 | `cli.py` | `main(changed_files_factory)`; prints the plan as JSON, sorted so the output is the same every run |
 | `main.py` | default binary: wires in `GitDiffChangedFiles` |
 
@@ -87,8 +88,40 @@ END
    - Here, test files only decide whether a suite is selected; they aren't
      passed to the tests.
 4. **Output (`Plan`):** each action has a name, machine type, list of commands
-   and files; each test run has a platform, test args and patterns. Turning
-   this into GitLab jobs or `run_actions` calls is a later step.
+   and files; each test run has a platform, test args and patterns.
+5. **Deleted files:** `ChangedFiles.deleted()` lists the changed files the PR
+   deletes (git: `--diff-filter=D`; a rename's old path counts as deleted).
+   They still select presubmit blocks, so deleting a file still runs its
+   tests, but they are left out of `{FILES}` and `{EACH_FILE}`: linting a
+   file that no longer exists fails. An action whose command uses either
+   placeholder and that only deleted files selected gets no commands.
+
+## Jobs (`jobs.py`)
+
+The plan is turned into the jobs a CI system would create. GitLab is first,
+but a job is just a name, a kind and an `argv`, so other runners can use it.
+
+- **`run_actions` jobs:** one per machine type, named `actions:<machine type>`.
+  Every planned command for that machine type becomes one `name=command`
+  argument of a single `run_actions` call, after `--`.
+  - No placeholder: the command once, under the action's name.
+  - `{FILES}`: one command, under the action's name.
+  - `{EACH_FILE}`: one command per (non-deleted) file, named `<name>.1`,
+    `<name>.2`, ... in sorted file order, so `run_actions` runs them in
+    parallel and reports each one.
+  - Names are made legal for `run_actions` (`[A-Za-z_][A-Za-z0-9_.-]*`): other
+    characters become `_`.
+  - Actions with no commands are dropped; a machine type left with none gets
+    no job.
+- **Bazel jobs:** one per test run: `bazel coverage` if the suites asked for
+  coverage, else `bazel test`, then `--platforms=<platform>` if any, the test
+  args, `--`, and the patterns. Named `bazel:<test|coverage>[:<platform>]`,
+  with `:1`, `:2`, ... added when runs share a name (they differ in
+  `test_args`). A run with no patterns gets no job.
+- How to call `run_actions` and `bazel` is configurable (`--run_actions`,
+  `--bazel`), e.g. `--run_actions "python3 run_actions.zip --ddci"`.
+- The CLI JSON keeps `actions` and `test_runs` next to `jobs`, so a surprising
+  job can be traced back to the plan.
 
 ## Steps
 
@@ -144,7 +177,8 @@ It prints JSON with `changed_files`, `testing_files`, `actions` and
 
 ## Not in this phase
 
-- Turning the plan into GitLab jobs and `run_actions` calls.
+- Writing the jobs out as GitLab CI YAML (a child pipeline).
+- Mapping machine types to GitLab runner tags and images.
 - The Datadog `ChangedFiles` implementation.
 - A checker for `test_args`.
 - Whether `METADATA` replaces `TESTING`.

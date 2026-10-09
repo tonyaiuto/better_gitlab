@@ -1,0 +1,51 @@
+The whole pipeline through to jobs. pkg/old.go is deleted: it still selects
+go_unit and lint, but is not linted or formatted. fmt (EACH_FILE) is
+numbered per file. go_unit runs under coverage, e2e once per platform.
+
+== tree
+/TESTING <<<END
+action { name: "lint" command: "golint {FILES}" }
+action { name: "fmt" command: "gofmt -l {EACH_FILE}" machine_type: "linux" }
+action { name: "licenses" command: "dda inv lint-licenses" machine_type: "linux" }
+test_suite { name: "go_unit" tests: "//pkg/..." coverage: true }
+test_suite { name: "e2e" tests: "//test/e2e/..." platform: "//p:linux" platform: "//p:mac" }
+presubmit { include_regex: "\\.go$" check_action: "lint" check_action: "fmt" check_tests: "go_unit" }
+presubmit { include_regex: "^go\\.mod$" check_action: "licenses" }
+presubmit { include_regex: "^cmd/" check_tests: "e2e" }
+END
+== changed
+pkg/a.go
+pkg/b.go
+cmd/main.go
+go.mod
+== deleted
+pkg/old.go
+== expected
+{
+  "changed_files": ["pkg/a.go", "pkg/b.go", "cmd/main.go", "go.mod", "pkg/old.go"],
+  "deleted_files": ["pkg/old.go"],
+  "jobs": [
+    {"name": "actions:default", "kind": "run_actions", "machine_type": "default",
+     "argv": ["run_actions", "--", "lint=golint cmd/main.go pkg/a.go pkg/b.go"],
+     "actions": [{"name": "lint", "action": "lint", "command": "golint cmd/main.go pkg/a.go pkg/b.go"}],
+     "platform": "", "tests": [], "suites": []},
+    {"name": "actions:linux", "kind": "run_actions", "machine_type": "linux",
+     "argv": ["run_actions", "--",
+              "fmt.1=gofmt -l cmd/main.go", "fmt.2=gofmt -l pkg/a.go", "fmt.3=gofmt -l pkg/b.go",
+              "licenses=dda inv lint-licenses"],
+     "actions": [{"name": "fmt.1", "action": "fmt", "command": "gofmt -l cmd/main.go"},
+                 {"name": "fmt.2", "action": "fmt", "command": "gofmt -l pkg/a.go"},
+                 {"name": "fmt.3", "action": "fmt", "command": "gofmt -l pkg/b.go"},
+                 {"name": "licenses", "action": "licenses", "command": "dda inv lint-licenses"}],
+     "platform": "", "tests": [], "suites": []},
+    {"name": "bazel:coverage", "kind": "bazel", "machine_type": "", "actions": [],
+     "argv": ["bazel", "coverage", "--", "//pkg/..."],
+     "platform": "", "tests": ["//pkg/..."], "suites": ["go_unit"]},
+    {"name": "bazel:test://p:linux", "kind": "bazel", "machine_type": "", "actions": [],
+     "argv": ["bazel", "test", "--platforms=//p:linux", "--", "//test/e2e/..."],
+     "platform": "//p:linux", "tests": ["//test/e2e/..."], "suites": ["e2e"]},
+    {"name": "bazel:test://p:mac", "kind": "bazel", "machine_type": "", "actions": [],
+     "argv": ["bazel", "test", "--platforms=//p:mac", "--", "//test/e2e/..."],
+     "platform": "//p:mac", "tests": ["//test/e2e/..."], "suites": ["e2e"]}
+  ]
+}

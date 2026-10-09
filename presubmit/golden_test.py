@@ -4,7 +4,10 @@ A case file has sections, each starting with a line "== NAME":
 
     == tree       a mock source tree (see source_tree.parse_mock_tree)
     == changed    the changed files, one per line
-    == expected   the expected JSON result of cli.compute
+    == deleted    optional: files the PR deletes, one per line; they are
+                  appended to the changed files
+    == expected   the expected JSON result of cli.compute. Only the keys it
+                  lists are compared, so a case can leave out e.g. "jobs".
     == error      instead of expected: text the error message must contain
 
 Lines before the first section are a free-form description.
@@ -33,6 +36,10 @@ def parse_case(text):
     return sections
 
 
+def _lines(text):
+    return [l.strip() for l in text.splitlines() if l.strip()]
+
+
 class GoldenTest(unittest.TestCase):
     def test_cases_exist(self):
         self.assertTrue(glob.glob(os.path.join(_TESTDATA, "*.test")))
@@ -43,13 +50,18 @@ class GoldenTest(unittest.TestCase):
                 with open(path, encoding="utf-8") as f:
                     case = parse_case(f.read())
                 tree = source_tree.parse_mock_tree(case["tree"])
-                changed = [l.strip() for l in case["changed"].splitlines() if l.strip()]
+                changed = _lines(case["changed"])
+                deleted = _lines(case.get("deleted", ""))
+                # As with FixedChangedFiles, deleted files are also changed files.
+                changed += [d for d in deleted if d not in changed]
                 if "error" in case:
                     with self.assertRaises(Exception) as cm:
-                        cli.compute(tree, changed)
+                        cli.compute(tree, changed, deleted_files=deleted)
                     self.assertIn(case["error"].strip(), str(cm.exception))
                 else:
-                    self.assertEqual(cli.compute(tree, changed), json.loads(case["expected"]))
+                    expected = json.loads(case["expected"])
+                    got = cli.compute(tree, changed, deleted_files=deleted)
+                    self.assertEqual({k: got[k] for k in expected}, expected)
 
 
 if __name__ == "__main__":

@@ -12,6 +12,11 @@ class FixedChangedFilesTest(unittest.TestCase):
         files = changed_files.FixedChangedFiles(["/b/x.c", "a.c", "b/./x.c"])
         self.assertEqual(files.get(), ["a.c", "b/x.c"])
 
+    def test_deleted_added_to_changed(self):
+        files = changed_files.FixedChangedFiles(["a.c"], deleted=["/gone.c", "a.c"])
+        self.assertEqual(files.get(), ["a.c", "gone.c"])
+        self.assertEqual(files.deleted(), ["a.c", "gone.c"])
+
 
 class GitDiffChangedFilesTest(unittest.TestCase):
     def setUp(self):
@@ -57,6 +62,7 @@ class GitDiffChangedFilesTest(unittest.TestCase):
         self.assertEqual(
             files.get(),
             ["new/moved.c", "old/moved.c", "src/delete.c", "src/edit.c", "src/new file.c"])
+        self.assertEqual(files.deleted(), ["old/moved.c", "src/delete.c"])
 
     def test_uncommitted_changes_included(self):
         self.write("src/edit.c", "dirty")
@@ -66,6 +72,7 @@ class GitDiffChangedFilesTest(unittest.TestCase):
     def test_no_changes(self):
         files = changed_files.GitDiffChangedFiles("base", repo_root=self.root)
         self.assertEqual(files.get(), [])
+        self.assertEqual(files.deleted(), [])
 
     def test_bad_ref(self):
         files = changed_files.GitDiffChangedFiles("no-such-ref", repo_root=self.root)

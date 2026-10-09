@@ -6,6 +6,9 @@ Actions:
     runs once, with the union of their files.
   - The command is then expanded: {FILES} becomes all the files, {EACH_FILE}
     makes one command per file. File names are shell-quoted.
+  - Deleted files still select actions, but are left out of {FILES} and
+    {EACH_FILE}. An action whose command needs files, selected only by
+    deleted files, gets no commands.
 
 Test suites:
   - A suite runs once per platform (or once with no platform).
@@ -34,9 +37,10 @@ class PlanError(Exception):
 class PlannedAction:
     name: str
     machine_type: str
-    # The files that selected this action, sorted.
+    # The files that selected this action, sorted. Includes deleted files.
     files: list
-    # The expanded commands to run, in order.
+    # The expanded commands to run, in order. Empty if the command uses
+    # {FILES} or {EACH_FILE} and every selecting file was deleted.
     commands: list
 
 
@@ -70,6 +74,8 @@ def expand_command(name: str, command: str, files: list) -> list:
     if has_each_file:
         return [command.replace(EACH_FILE, shlex.quote(f)) for f in files]
     if has_files:
+        if not files:
+            return []
         return [command.replace(FILES, " ".join(shlex.quote(f) for f in files))]
     return [command]
 
@@ -77,8 +83,13 @@ def expand_command(name: str, command: str, files: list) -> list:
 def build_plan(
         loaded: loader.Loaded,
         selections: list,
-        default_machine_types: list = DEFAULT_MACHINE_TYPES) -> Plan:
-    """Builds the plan for the selections made from loaded."""
+        default_machine_types: list = DEFAULT_MACHINE_TYPES,
+        deleted_files=()) -> Plan:
+    """Builds the plan for the selections made from loaded.
+
+    deleted_files are left out of command expansion (see the module doc).
+    """
+    deleted = set(deleted_files)
     # (action name, machine type) -> set of files
     action_files = {}
     # (tuple(test_args), platform, coverage) -> (set of test patterns, set of suite names)
@@ -104,7 +115,8 @@ def build_plan(
             name=name,
             machine_type=machine_type,
             files=sorted_files,
-            commands=expand_command(name, loaded.actions[name].command, sorted_files)))
+            commands=expand_command(
+                name, loaded.actions[name].command, [f for f in sorted_files if f not in deleted])))
 
     test_runs = []
     for (test_args, platform, coverage), (tests, suites) in sorted(

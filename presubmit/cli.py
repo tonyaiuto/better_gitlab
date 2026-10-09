@@ -17,11 +17,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import sys
 from dataclasses import asdict
 
 from presubmit import changed_files as changed_files_lib
 from presubmit import discover
+from presubmit import jobs as jobs_lib
 from presubmit import loader
 from presubmit import plan as plan_lib
 from presubmit import selection
@@ -34,17 +36,27 @@ def compute(
         tree: source_tree.SourceTree,
         changed_files: list,
         filename: str = discover.DEFAULT_FILENAME,
-        default_machine_types: list = plan_lib.DEFAULT_MACHINE_TYPES) -> dict:
-    """Runs the whole pipeline and returns the result as a JSON-ready dict."""
+        default_machine_types: list = plan_lib.DEFAULT_MACHINE_TYPES,
+        deleted_files=(),
+        run_actions_command: list = jobs_lib.RUN_ACTIONS_COMMAND,
+        bazel_command: list = jobs_lib.BAZEL_COMMAND) -> dict:
+    """Runs the whole pipeline and returns the result as a JSON-ready dict.
+
+    deleted_files are the changed files the PR deletes; they select blocks
+    but are not passed to commands.
+    """
     testing_files = discover.find_testing_files(tree, changed_files, filename)
     loaded = loader.load(tree, testing_files)
     selections = selection.select(loaded, changed_files)
-    plan = plan_lib.build_plan(loaded, selections, default_machine_types)
+    plan = plan_lib.build_plan(loaded, selections, default_machine_types, deleted_files)
+    jobs = jobs_lib.build_jobs(plan, run_actions_command, bazel_command)
     return {
         "changed_files": list(changed_files),
+        "deleted_files": sorted(deleted_files),
         "testing_files": testing_files,
         "actions": [asdict(a) for a in plan.actions],
         "test_runs": [asdict(t) for t in plan.test_runs],
+        "jobs": [asdict(j) for j in jobs],
     }
 
 
@@ -53,7 +65,7 @@ def git_changed_files(args) -> changed_files_lib.ChangedFiles:
 
 
 # Errors that mean bad input rather than a bug.
-_USER_ERRORS = (
+USER_ERRORS = (
     changed_files_lib.ChangedFilesError,
     loader.LoadError,
     plan_lib.PlanError,
@@ -79,13 +91,34 @@ def make_parser() -> argparse.ArgumentParser:
         "--file", action="append", dest="files", metavar="PATH",
         help="use this changed file instead of asking for the changed files; repeatable")
     parser.add_argument(
+        "--deleted", action="append", dest="deleted", metavar="PATH",
+        help="with --file: a changed file the PR deletes; repeatable")
+    parser.add_argument(
         "--filename", default=discover.DEFAULT_FILENAME,
         help="name of the files declaring actions (default: %(default)s)")
     parser.add_argument(
         "--default_machine_type", action="append", metavar="TYPE",
         help="machine type for actions that name none; repeatable "
              "(default: %s)" % ", ".join(plan_lib.DEFAULT_MACHINE_TYPES))
+    parser.add_argument(
+        "--run_actions", default=shlex.join(jobs_lib.RUN_ACTIONS_COMMAND), metavar="COMMAND",
+        help="how jobs invoke run_actions, split like a shell would (default: %(default)s)")
+    parser.add_argument(
+        "--bazel", default=shlex.join(jobs_lib.BAZEL_COMMAND), metavar="COMMAND",
+        help="how jobs invoke bazel, split like a shell would (default: %(default)s)")
     return parser
+
+
+def compute_from_args(args, changed: changed_files_lib.ChangedFiles) -> dict:
+    """compute() with the tree and options taken from parsed arguments."""
+    return compute(
+        source_tree.FsSourceTree(args.repo),
+        changed.get(),
+        filename=args.filename,
+        default_machine_types=args.default_machine_type or plan_lib.DEFAULT_MACHINE_TYPES,
+        deleted_files=changed.deleted(),
+        run_actions_command=shlex.split(args.run_actions),
+        bazel_command=shlex.split(args.bazel))
 
 
 def main(argv=None, make_changed_files=git_changed_files, add_arguments=None) -> int:
@@ -99,16 +132,12 @@ def main(argv=None, make_changed_files=git_changed_files, add_arguments=None) ->
         add_arguments(parser)
     args = parser.parse_args(argv)
     try:
-        if args.files:
-            changed = changed_files_lib.FixedChangedFiles(args.files)
+        if args.files or args.deleted:
+            changed = changed_files_lib.FixedChangedFiles(args.files or [], args.deleted or [])
         else:
             changed = make_changed_files(args)
-        result = compute(
-            source_tree.FsSourceTree(args.repo),
-            changed.get(),
-            filename=args.filename,
-            default_machine_types=args.default_machine_type or plan_lib.DEFAULT_MACHINE_TYPES)
-    except _USER_ERRORS as e:
+        result = compute_from_args(args, changed)
+    except USER_ERRORS as e:
         print("error: %s" % e, file=sys.stderr)
         return 1
     json.dump(result, sys.stdout, indent=2, sort_keys=True)
