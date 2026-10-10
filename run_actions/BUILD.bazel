@@ -19,6 +19,7 @@ py_library(
 py_binary(
     name = "run_actions_bin",
     srcs = ["main.py"],
+    imports = [".."],
     main = "main.py",
     visibility = ["//visibility:public"],
     deps = [":run_actions_lib"],

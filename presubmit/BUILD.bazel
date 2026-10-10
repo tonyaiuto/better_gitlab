@@ -230,6 +230,7 @@ py_test(
 py_binary(
     name = "backtest_bin",
     srcs = ["backtest_main.py"],
+    imports = [".."],
     main = "backtest_main.py",
     visibility = ["//visibility:public"],
     deps = [":backtest_lib"],
