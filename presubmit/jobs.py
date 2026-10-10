@@ -85,12 +85,15 @@ def _run_actions_jobs(actions: list, run_actions_command: list) -> list:
     for machine_type, job_actions in sorted(by_machine.items()):
         argv = list(run_actions_command) + ["--"]
         argv += ["%s=%s" % (a.name, a.command) for a in job_actions]
-        jobs.append(Job(
-            name="actions:%s" % machine_type,
-            kind=RUN_ACTIONS,
-            argv=argv,
-            machine_type=machine_type,
-            actions=job_actions))
+        jobs.append(
+            Job(
+                name="actions:%s" % machine_type,
+                kind=RUN_ACTIONS,
+                argv=argv,
+                machine_type=machine_type,
+                actions=job_actions,
+            )
+        )
     return jobs
 
 
@@ -112,20 +115,25 @@ def _bazel_jobs(test_runs: list, bazel_command: list) -> list:
         if run.platform:
             argv.append("--platforms=%s" % run.platform)
         argv += list(run.test_args) + ["--"] + list(run.tests)
-        jobs.append(Job(
-            name=name,
-            kind=BAZEL,
-            argv=argv,
-            platform=run.platform,
-            tests=list(run.tests),
-            suites=list(run.suites)))
+        jobs.append(
+            Job(
+                name=name,
+                kind=BAZEL,
+                argv=argv,
+                platform=run.platform,
+                tests=list(run.tests),
+                suites=list(run.suites),
+            )
+        )
     return jobs
 
 
 def build_jobs(
-        plan: plan_lib.Plan,
-        run_actions_command: list = RUN_ACTIONS_COMMAND,
-        bazel_command: list = BAZEL_COMMAND) -> list:
+    plan: plan_lib.Plan,
+    run_actions_command: list = RUN_ACTIONS_COMMAND,
+    bazel_command: list = BAZEL_COMMAND,
+) -> list:
     """Returns the jobs for plan: run_actions jobs, then bazel jobs, each sorted by name."""
-    return (_run_actions_jobs(plan.actions, run_actions_command)
-            + sorted(_bazel_jobs(plan.test_runs, bazel_command), key=lambda j: j.name))
+    return _run_actions_jobs(plan.actions, run_actions_command) + sorted(
+        _bazel_jobs(plan.test_runs, bazel_command), key=lambda j: j.name
+    )

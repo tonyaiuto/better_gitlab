@@ -18,25 +18,31 @@ class ExpandCommandTest(unittest.TestCase):
     def test_files(self):
         self.assertEqual(
             plan.expand_command("x", "lint {FILES} --strict", ["a.c", "b c.c"]),
-            ["lint a.c 'b c.c' --strict"])
+            ["lint a.c 'b c.c' --strict"],
+        )
 
     def test_each_file(self):
         self.assertEqual(
             plan.expand_command("x", "fmt --check {EACH_FILE}", ["a.c", "b c.c"]),
-            ["fmt --check a.c", "fmt --check 'b c.c'"])
+            ["fmt --check a.c", "fmt --check 'b c.c'"],
+        )
 
     def test_placeholder_used_twice(self):
         self.assertEqual(
             plan.expand_command("x", "cp {EACH_FILE} {EACH_FILE}.bak", ["a"]),
-            ["cp a a.bak"])
+            ["cp a a.bak"],
+        )
 
     def test_no_placeholder(self):
-        self.assertEqual(plan.expand_command("x", "make lint", ["a.c", "b.c"]), ["make lint"])
+        self.assertEqual(
+            plan.expand_command("x", "make lint", ["a.c", "b.c"]), ["make lint"]
+        )
 
     def test_other_braces_untouched(self):
         self.assertEqual(
             plan.expand_command("x", "echo ${HOME} {other} {FILES}", ["a"]),
-            ["echo ${HOME} {other} a"])
+            ["echo ${HOME} {other} a"],
+        )
 
     def test_both_placeholders(self):
         with self.assertRaises(PlanError):
@@ -45,39 +51,57 @@ class ExpandCommandTest(unittest.TestCase):
 
 class BuildPlanActionsTest(unittest.TestCase):
     def test_default_machine_types(self):
-        p = _plan("""
+        p = _plan(
+            """
 /TESTING <<<END
 action { name: "lint" command: "lint {FILES}" }
 presubmit { check_action: "lint" }
 END
-""", ["a.c"])
-        self.assertEqual(p.actions, [PlannedAction("lint", "default", ["a.c"], ["lint a.c"])])
+""",
+            ["a.c"],
+        )
+        self.assertEqual(
+            p.actions, [PlannedAction("lint", "default", ["a.c"], ["lint a.c"])]
+        )
         self.assertEqual(p.test_runs, [])
 
     def test_custom_default_machine_types(self):
-        p = _plan("""
+        p = _plan(
+            """
 /TESTING <<<END
 action { name: "lint" command: "lint" }
 presubmit { check_action: "lint" }
 END
-""", ["a.c"], default_machine_types=["linux", "mac"])
-        self.assertEqual([(a.name, a.machine_type) for a in p.actions],
-                         [("lint", "linux"), ("lint", "mac")])
+""",
+            ["a.c"],
+            default_machine_types=["linux", "mac"],
+        )
+        self.assertEqual(
+            [(a.name, a.machine_type) for a in p.actions],
+            [("lint", "linux"), ("lint", "mac")],
+        )
 
     def test_one_per_machine_type(self):
-        p = _plan("""
+        p = _plan(
+            """
 /TESTING <<<END
 action { name: "build" command: "make" machine_type: "linux_arm64" machine_type: "linux_amd64" }
 presubmit { check_action: "build" }
 END
-""", ["a.c"])
-        self.assertEqual(p.actions, [
-            PlannedAction("build", "linux_amd64", ["a.c"], ["make"]),
-            PlannedAction("build", "linux_arm64", ["a.c"], ["make"]),
-        ])
+""",
+            ["a.c"],
+        )
+        self.assertEqual(
+            p.actions,
+            [
+                PlannedAction("build", "linux_amd64", ["a.c"], ["make"]),
+                PlannedAction("build", "linux_arm64", ["a.c"], ["make"]),
+            ],
+        )
 
     def test_same_action_from_several_blocks_unions_files(self):
-        p = _plan("""
+        p = _plan(
+            """
 /TESTING <<<END
 action { name: "lint" command: "lint {FILES}" }
 END
@@ -87,13 +111,21 @@ END
 /b/TESTING <<<END
 presubmit { include_regex: "\\\\.c$" check_action: "lint" }
 END
-""", ["a/x.c", "b/y.c", "b/y.h"])
-        self.assertEqual(p.actions, [
-            PlannedAction("lint", "default", ["a/x.c", "b/y.c"], ["lint a/x.c b/y.c"]),
-        ])
+""",
+            ["a/x.c", "b/y.c", "b/y.h"],
+        )
+        self.assertEqual(
+            p.actions,
+            [
+                PlannedAction(
+                    "lint", "default", ["a/x.c", "b/y.c"], ["lint a/x.c b/y.c"]
+                ),
+            ],
+        )
 
     def test_each_file_after_union(self):
-        p = _plan("""
+        p = _plan(
+            """
 /TESTING <<<END
 action { name: "fmt" command: "fmt {EACH_FILE}" }
 END
@@ -103,17 +135,22 @@ END
 /b/TESTING <<<END
 presubmit { check_action: "fmt" }
 END
-""", ["b/y.c", "a/x.c"])
+""",
+            ["b/y.c", "a/x.c"],
+        )
         self.assertEqual(p.actions[0].commands, ["fmt a/x.c", "fmt b/y.c"])
 
     def test_actions_sorted_by_name(self):
-        p = _plan("""
+        p = _plan(
+            """
 /TESTING <<<END
 action { name: "zeta" command: "z" }
 action { name: "alpha" command: "a" }
 presubmit { check_action: "zeta" check_action: "alpha" }
 END
-""", ["a.c"])
+""",
+            ["a.c"],
+        )
         self.assertEqual([a.name for a in p.actions], ["alpha", "zeta"])
 
 
@@ -129,43 +166,60 @@ END
 
     def test_deleted_files_not_expanded(self):
         p = _plan(self.SPEC, ["a.c", "gone.c"], deleted_files=["gone.c"])
-        self.assertEqual(p.actions, [
-            PlannedAction("fmt", "default", ["a.c", "gone.c"], ["fmt a.c"]),
-            PlannedAction("gen", "default", ["a.c", "gone.c"], ["make gen"]),
-            PlannedAction("lint", "default", ["a.c", "gone.c"], ["lint a.c"]),
-        ])
+        self.assertEqual(
+            p.actions,
+            [
+                PlannedAction("fmt", "default", ["a.c", "gone.c"], ["fmt a.c"]),
+                PlannedAction("gen", "default", ["a.c", "gone.c"], ["make gen"]),
+                PlannedAction("lint", "default", ["a.c", "gone.c"], ["lint a.c"]),
+            ],
+        )
 
     def test_only_deleted_files(self):
         p = _plan(self.SPEC, ["gone.c"], deleted_files=["gone.c"])
-        self.assertEqual({a.name: a.commands for a in p.actions},
-                         {"fmt": [], "gen": ["make gen"], "lint": []})
+        self.assertEqual(
+            {a.name: a.commands for a in p.actions},
+            {"fmt": [], "gen": ["make gen"], "lint": []},
+        )
 
 
 class BuildPlanTestRunsTest(unittest.TestCase):
     def test_no_platform(self):
-        p = _plan("""
+        p = _plan(
+            """
 /TESTING <<<END
 test_suite { name: "unit" tests: "//b/..." tests: "//a/..." }
 presubmit { check_tests: "unit" }
 END
-""", ["a.c"])
-        self.assertEqual(p.test_runs, [TestRun("", [], ["//a/...", "//b/..."], ["unit"], False)])
+""",
+            ["a.c"],
+        )
+        self.assertEqual(
+            p.test_runs, [TestRun("", [], ["//a/...", "//b/..."], ["unit"], False)]
+        )
         self.assertEqual(p.actions, [])
 
     def test_one_run_per_platform(self):
-        p = _plan("""
+        p = _plan(
+            """
 /TESTING <<<END
 test_suite { name: "unit" tests: "//..." platform: "//p:linux" platform: "//p:mac" }
 presubmit { check_tests: "unit" }
 END
-""", ["a.c"])
-        self.assertEqual(p.test_runs, [
-            TestRun("//p:linux", [], ["//..."], ["unit"], False),
-            TestRun("//p:mac", [], ["//..."], ["unit"], False),
-        ])
+""",
+            ["a.c"],
+        )
+        self.assertEqual(
+            p.test_runs,
+            [
+                TestRun("//p:linux", [], ["//..."], ["unit"], False),
+                TestRun("//p:mac", [], ["//..."], ["unit"], False),
+            ],
+        )
 
     def test_same_args_and_platform_merge(self):
-        p = _plan("""
+        p = _plan(
+            """
 /TESTING <<<END
 test_suite { name: "a_tests" tests: "//a/..." test_args: "--test_output=errors" }
 test_suite { name: "b_tests" tests: "//b/..." test_args: "--test_output=errors" }
@@ -174,25 +228,40 @@ test_suite { name: "d_tests" tests: "//a/..." platform: "//p:linux" }
 presubmit { check_tests: "a_tests" check_tests: "b_tests" check_tests: "c_tests" }
 presubmit { check_tests: "d_tests" }
 END
-""", ["x.c"])
-        self.assertEqual(p.test_runs, [
-            TestRun("", [], ["//c/..."], ["c_tests"], False),
-            TestRun("", ["--test_output=errors"], ["//a/...", "//b/..."], ["a_tests", "b_tests"], False),
-            TestRun("//p:linux", [], ["//a/..."], ["d_tests"], False),
-        ])
+""",
+            ["x.c"],
+        )
+        self.assertEqual(
+            p.test_runs,
+            [
+                TestRun("", [], ["//c/..."], ["c_tests"], False),
+                TestRun(
+                    "",
+                    ["--test_output=errors"],
+                    ["//a/...", "//b/..."],
+                    ["a_tests", "b_tests"],
+                    False,
+                ),
+                TestRun("//p:linux", [], ["//a/..."], ["d_tests"], False),
+            ],
+        )
 
     def test_test_args_order_matters(self):
-        p = _plan("""
+        p = _plan(
+            """
 /TESTING <<<END
 test_suite { name: "a" tests: "//a" test_args: "-x" test_args: "-y" }
 test_suite { name: "b" tests: "//b" test_args: "-y" test_args: "-x" }
 presubmit { check_tests: "a" check_tests: "b" }
 END
-""", ["x.c"])
+""",
+            ["x.c"],
+        )
         self.assertEqual(len(p.test_runs), 2)
 
     def test_suite_selected_twice_counted_once(self):
-        p = _plan("""
+        p = _plan(
+            """
 /TESTING <<<END
 test_suite { name: "unit" tests: "//..." }
 presubmit { check_tests: "unit" }
@@ -200,43 +269,60 @@ END
 /a/TESTING <<<END
 presubmit { check_tests: "unit" }
 END
-""", ["a/x.c"])
+""",
+            ["a/x.c"],
+        )
         self.assertEqual(p.test_runs, [TestRun("", [], ["//..."], ["unit"], False)])
 
     def test_coverage_suite_separated_from_test_suite(self):
-        p = _plan("""
+        p = _plan(
+            """
 /TESTING <<<END
 test_suite { name: "unit" tests: "//a/..." }
 test_suite { name: "unit_coverage" tests: "//a/..." coverage: true }
 presubmit { check_tests: "unit" check_tests: "unit_coverage" }
 END
-""", ["a.c"])
-        self.assertEqual(p.test_runs, [
-            TestRun("", [], ["//a/..."], ["unit"], False),
-            TestRun("", [], ["//a/..."], ["unit_coverage"], True),
-        ])
+""",
+            ["a.c"],
+        )
+        self.assertEqual(
+            p.test_runs,
+            [
+                TestRun("", [], ["//a/..."], ["unit"], False),
+                TestRun("", [], ["//a/..."], ["unit_coverage"], True),
+            ],
+        )
 
     def test_coverage_suites_merge_like_test_suites(self):
-        p = _plan("""
+        p = _plan(
+            """
 /TESTING <<<END
 test_suite { name: "a_cov" tests: "//a/..." coverage: true }
 test_suite { name: "b_cov" tests: "//b/..." coverage: true }
 presubmit { check_tests: "a_cov" check_tests: "b_cov" }
 END
-""", ["x.c"])
-        self.assertEqual(p.test_runs, [
-            TestRun("", [], ["//a/...", "//b/..."], ["a_cov", "b_cov"], True),
-        ])
+""",
+            ["x.c"],
+        )
+        self.assertEqual(
+            p.test_runs,
+            [
+                TestRun("", [], ["//a/...", "//b/..."], ["a_cov", "b_cov"], True),
+            ],
+        )
 
 
 class BuildPlanEmptyTest(unittest.TestCase):
     def test_nothing_selected(self):
-        p = _plan("""
+        p = _plan(
+            """
 /TESTING <<<END
 action { name: "lint" command: "lint" }
 presubmit { include_regex: "\\\\.go$" check_action: "lint" }
 END
-""", ["a.c"])
+""",
+            ["a.c"],
+        )
         self.assertEqual(p.actions, [])
         self.assertEqual(p.test_runs, [])
 

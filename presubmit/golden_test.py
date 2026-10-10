@@ -37,7 +37,7 @@ def parse_case(text):
 
 
 def _lines(text):
-    return [l.strip() for l in text.splitlines() if l.strip()]
+    return [line.strip() for line in text.splitlines() if line.strip()]
 
 
 class GoldenTest(unittest.TestCase):

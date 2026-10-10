@@ -38,10 +38,22 @@ class GitDiffChangedFilesTest(unittest.TestCase):
     def git(self, *args):
         env = dict(os.environ, GIT_CONFIG_NOSYSTEM="1", HOME=self.root)
         subprocess.run(
-            ["git", "-C", self.root,
-             "-c", "user.name=test", "-c", "user.email=test@example.com",
-             "-c", "commit.gpgsign=false"] + list(args),
-            check=True, env=env, capture_output=True)
+            [
+                "git",
+                "-C",
+                self.root,
+                "-c",
+                "user.name=test",
+                "-c",
+                "user.email=test@example.com",
+                "-c",
+                "commit.gpgsign=false",
+            ]
+            + list(args),
+            check=True,
+            env=env,
+            capture_output=True,
+        )
 
     def write(self, path, content):
         full = os.path.join(self.root, path)
@@ -61,7 +73,14 @@ class GitDiffChangedFilesTest(unittest.TestCase):
         files = changed_files.GitDiffChangedFiles("base", repo_root=self.root)
         self.assertEqual(
             files.get(),
-            ["new/moved.c", "old/moved.c", "src/delete.c", "src/edit.c", "src/new file.c"])
+            [
+                "new/moved.c",
+                "old/moved.c",
+                "src/delete.c",
+                "src/edit.c",
+                "src/new file.c",
+            ],
+        )
         self.assertEqual(files.deleted(), ["old/moved.c", "src/delete.c"])
 
     def test_uncommitted_changes_included(self):
@@ -82,7 +101,8 @@ class GitDiffChangedFilesTest(unittest.TestCase):
 
     def test_missing_git(self):
         files = changed_files.GitDiffChangedFiles(
-            "base", repo_root=self.root, git="/no/such/git")
+            "base", repo_root=self.root, git="/no/such/git"
+        )
         with self.assertRaises(ChangedFilesError):
             files.get()
 

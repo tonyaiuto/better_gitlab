@@ -81,10 +81,11 @@ def expand_command(name: str, command: str, files: list) -> list:
 
 
 def build_plan(
-        loaded: loader.Loaded,
-        selections: list,
-        default_machine_types: list = DEFAULT_MACHINE_TYPES,
-        deleted_files=()) -> Plan:
+    loaded: loader.Loaded,
+    selections: list,
+    default_machine_types: list = DEFAULT_MACHINE_TYPES,
+    deleted_files=(),
+) -> Plan:
     """Builds the plan for the selections made from loaded.
 
     deleted_files are left out of command expansion (see the module doc).
@@ -99,7 +100,9 @@ def build_plan(
         for name in selected.actions:
             action = loaded.actions[name]
             for machine_type in list(action.machine_type) or default_machine_types:
-                action_files.setdefault((name, machine_type), set()).update(selected.files)
+                action_files.setdefault((name, machine_type), set()).update(
+                    selected.files
+                )
         for name in selected.test_suites:
             suite = loaded.test_suites[name]
             for platform in list(suite.platform) or [""]:
@@ -111,21 +114,31 @@ def build_plan(
     actions = []
     for (name, machine_type), files in sorted(action_files.items()):
         sorted_files = sorted(files)
-        actions.append(PlannedAction(
-            name=name,
-            machine_type=machine_type,
-            files=sorted_files,
-            commands=expand_command(
-                name, loaded.actions[name].command, [f for f in sorted_files if f not in deleted])))
+        actions.append(
+            PlannedAction(
+                name=name,
+                machine_type=machine_type,
+                files=sorted_files,
+                commands=expand_command(
+                    name,
+                    loaded.actions[name].command,
+                    [f for f in sorted_files if f not in deleted],
+                ),
+            )
+        )
 
     test_runs = []
     for (test_args, platform, coverage), (tests, suites) in sorted(
-            test_groups.items(), key=lambda item: (item[0][1], item[0][0], item[0][2])):
-        test_runs.append(TestRun(
-            platform=platform,
-            test_args=list(test_args),
-            tests=sorted(tests),
-            suites=sorted(suites),
-            coverage=coverage))
+        test_groups.items(), key=lambda item: (item[0][1], item[0][0], item[0][2])
+    ):
+        test_runs.append(
+            TestRun(
+                platform=platform,
+                test_args=list(test_args),
+                tests=sorted(tests),
+                suites=sorted(suites),
+                coverage=coverage,
+            )
+        )
 
     return Plan(actions=actions, test_runs=test_runs)

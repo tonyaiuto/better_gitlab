@@ -57,7 +57,9 @@ def backtest(tree: source_tree.SourceTree, prs: list, **compute_args) -> list:
         result = {k: pr.get(k) for k in _PR_FIELDS}
         changed, deleted = pr_changes(pr["files"])
         try:
-            result.update(cli.compute(tree, changed, deleted_files=deleted, **compute_args))
+            result.update(
+                cli.compute(tree, changed, deleted_files=deleted, **compute_args)
+            )
         except cli.USER_ERRORS as e:
             result["error"] = str(e)
         results.append(result)
@@ -69,8 +71,10 @@ def summary(results: list) -> str:
     planned = [r for r in results if "error" not in r]
     no_jobs = [r for r in planned if not r["jobs"]]
     job_counts = collections.Counter(j["name"] for r in planned for j in r["jobs"])
-    lines = ["%d PRs: %d with jobs, %d with no jobs, %d errors" % (
-        len(results), len(planned) - len(no_jobs), len(no_jobs), len(errors))]
+    lines = [
+        "%d PRs: %d with jobs, %d with no jobs, %d errors"
+        % (len(results), len(planned) - len(no_jobs), len(no_jobs), len(errors))
+    ]
     for name, n in sorted(job_counts.items(), key=lambda kv: (-kv[1], kv[0])):
         lines.append("  %4d  %s" % (n, name))
     for r in errors:
@@ -81,19 +85,32 @@ def summary(results: list) -> str:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Plan the presubmit jobs for past PRs listed by pr_files.py.",
-        allow_abbrev=False)
+        allow_abbrev=False,
+    )
     parser.add_argument(
-        "prs", nargs="?", default="-",
-        help="pr_files.py JSON output; '-' (the default) reads stdin")
+        "prs",
+        nargs="?",
+        default="-",
+        help="pr_files.py JSON output; '-' (the default) reads stdin",
+    )
     parser.add_argument(
-        "--repo", default=".",
-        help="root of the tree holding the TESTING files (default: current directory)")
-    parser.add_argument("--pr", type=int, action="append", help="only this PR; repeatable")
+        "--repo",
+        default=".",
+        help="root of the tree holding the TESTING files (default: current directory)",
+    )
     parser.add_argument(
-        "--out", default="-", help="where to write the JSON results; '-' (the default) is stdout")
+        "--pr", type=int, action="append", help="only this PR; repeatable"
+    )
+    parser.add_argument(
+        "--out",
+        default="-",
+        help="where to write the JSON results; '-' (the default) is stdout",
+    )
     parser.add_argument("--filename", default=discover.DEFAULT_FILENAME)
     parser.add_argument("--default_machine_type", action="append", metavar="TYPE")
-    parser.add_argument("--run_actions", default=shlex.join(jobs_lib.RUN_ACTIONS_COMMAND))
+    parser.add_argument(
+        "--run_actions", default=shlex.join(jobs_lib.RUN_ACTIONS_COMMAND)
+    )
     parser.add_argument("--bazel", default=shlex.join(jobs_lib.BAZEL_COMMAND))
     args = parser.parse_args(argv)
 
@@ -105,11 +122,14 @@ def main(argv=None) -> int:
     if args.pr:
         prs = [p for p in prs if p["pr"] in args.pr]
     results = backtest(
-        source_tree.FsSourceTree(args.repo), prs,
+        source_tree.FsSourceTree(args.repo),
+        prs,
         filename=args.filename,
-        default_machine_types=args.default_machine_type or plan_lib.DEFAULT_MACHINE_TYPES,
+        default_machine_types=args.default_machine_type
+        or plan_lib.DEFAULT_MACHINE_TYPES,
         run_actions_command=shlex.split(args.run_actions),
-        bazel_command=shlex.split(args.bazel))
+        bazel_command=shlex.split(args.bazel),
+    )
     text = json.dumps(results, indent=2, sort_keys=True) + "\n"
     if args.out == "-":
         sys.stdout.write(text)

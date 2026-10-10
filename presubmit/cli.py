@@ -33,13 +33,14 @@ DEFAULT_REF = "origin/main...HEAD"
 
 
 def compute(
-        tree: source_tree.SourceTree,
-        changed_files: list,
-        filename: str = discover.DEFAULT_FILENAME,
-        default_machine_types: list = plan_lib.DEFAULT_MACHINE_TYPES,
-        deleted_files=(),
-        run_actions_command: list = jobs_lib.RUN_ACTIONS_COMMAND,
-        bazel_command: list = jobs_lib.BAZEL_COMMAND) -> dict:
+    tree: source_tree.SourceTree,
+    changed_files: list,
+    filename: str = discover.DEFAULT_FILENAME,
+    default_machine_types: list = plan_lib.DEFAULT_MACHINE_TYPES,
+    deleted_files=(),
+    run_actions_command: list = jobs_lib.RUN_ACTIONS_COMMAND,
+    bazel_command: list = jobs_lib.BAZEL_COMMAND,
+) -> dict:
     """Runs the whole pipeline and returns the result as a JSON-ready dict.
 
     deleted_files are the changed files the PR deletes; they select blocks
@@ -78,34 +79,58 @@ USER_ERRORS = (
 def make_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Work out which actions and tests to run for the files "
-                    "changed in a PR, from the TESTING files in the source tree.",
-        allow_abbrev=False)
+        "changed in a PR, from the TESTING files in the source tree.",
+        allow_abbrev=False,
+    )
     parser.add_argument(
-        "--repo", default=".",
-        help="root of the source tree (default: current directory)")
+        "--repo",
+        default=".",
+        help="root of the source tree (default: current directory)",
+    )
     parser.add_argument(
-        "--ref", default=DEFAULT_REF,
+        "--ref",
+        default=DEFAULT_REF,
         help="git ref to diff against, passed to `git diff --name-only` "
-             "(default: %(default)s)")
+        "(default: %(default)s)",
+    )
     parser.add_argument(
-        "--file", action="append", dest="files", metavar="PATH",
-        help="use this changed file instead of asking for the changed files; repeatable")
+        "--file",
+        action="append",
+        dest="files",
+        metavar="PATH",
+        help="use this changed file instead of asking for the changed files; repeatable",
+    )
     parser.add_argument(
-        "--deleted", action="append", dest="deleted", metavar="PATH",
-        help="with --file: a changed file the PR deletes; repeatable")
+        "--deleted",
+        action="append",
+        dest="deleted",
+        metavar="PATH",
+        help="with --file: a changed file the PR deletes; repeatable",
+    )
     parser.add_argument(
-        "--filename", default=discover.DEFAULT_FILENAME,
-        help="name of the files declaring actions (default: %(default)s)")
+        "--filename",
+        default=discover.DEFAULT_FILENAME,
+        help="name of the files declaring actions (default: %(default)s)",
+    )
     parser.add_argument(
-        "--default_machine_type", action="append", metavar="TYPE",
+        "--default_machine_type",
+        action="append",
+        metavar="TYPE",
         help="machine type for actions that name none; repeatable "
-             "(default: %s)" % ", ".join(plan_lib.DEFAULT_MACHINE_TYPES))
+        "(default: %s)" % ", ".join(plan_lib.DEFAULT_MACHINE_TYPES),
+    )
     parser.add_argument(
-        "--run_actions", default=shlex.join(jobs_lib.RUN_ACTIONS_COMMAND), metavar="COMMAND",
-        help="how jobs invoke run_actions, split like a shell would (default: %(default)s)")
+        "--run_actions",
+        default=shlex.join(jobs_lib.RUN_ACTIONS_COMMAND),
+        metavar="COMMAND",
+        help="how jobs invoke run_actions, split like a shell would (default: %(default)s)",
+    )
     parser.add_argument(
-        "--bazel", default=shlex.join(jobs_lib.BAZEL_COMMAND), metavar="COMMAND",
-        help="how jobs invoke bazel, split like a shell would (default: %(default)s)")
+        "--bazel",
+        default=shlex.join(jobs_lib.BAZEL_COMMAND),
+        metavar="COMMAND",
+        help="how jobs invoke bazel, split like a shell would (default: %(default)s)",
+    )
     return parser
 
 
@@ -115,10 +140,12 @@ def compute_from_args(args, changed: changed_files_lib.ChangedFiles) -> dict:
         source_tree.FsSourceTree(args.repo),
         changed.get(),
         filename=args.filename,
-        default_machine_types=args.default_machine_type or plan_lib.DEFAULT_MACHINE_TYPES,
+        default_machine_types=args.default_machine_type
+        or plan_lib.DEFAULT_MACHINE_TYPES,
         deleted_files=changed.deleted(),
         run_actions_command=shlex.split(args.run_actions),
-        bazel_command=shlex.split(args.bazel))
+        bazel_command=shlex.split(args.bazel),
+    )
 
 
 def main(argv=None, make_changed_files=git_changed_files, add_arguments=None) -> int:
@@ -133,7 +160,9 @@ def main(argv=None, make_changed_files=git_changed_files, add_arguments=None) ->
     args = parser.parse_args(argv)
     try:
         if args.files or args.deleted:
-            changed = changed_files_lib.FixedChangedFiles(args.files or [], args.deleted or [])
+            changed = changed_files_lib.FixedChangedFiles(
+                args.files or [], args.deleted or []
+            )
         else:
             changed = make_changed_files(args)
         result = compute_from_args(args, changed)

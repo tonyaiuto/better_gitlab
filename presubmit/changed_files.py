@@ -78,8 +78,16 @@ class GitDiffChangedFiles(ChangedFiles):
 
     def _diff(self, *flags) -> list:
         command = [
-            self.git, "-C", self.repo_root,
-            "diff", "--name-only", "--no-renames", "-z", *flags, self.ref, "--",
+            self.git,
+            "-C",
+            self.repo_root,
+            "diff",
+            "--name-only",
+            "--no-renames",
+            "-z",
+            *flags,
+            self.ref,
+            "--",
         ]
         try:
             result = subprocess.run(command, capture_output=True)
@@ -87,9 +95,13 @@ class GitDiffChangedFiles(ChangedFiles):
             raise ChangedFilesError("could not run %s: %s" % (self.git, e)) from e
         if result.returncode != 0:
             raise ChangedFilesError(
-                "%s failed (exit %d): %s" % (
-                    " ".join(command), result.returncode,
-                    result.stderr.decode("utf-8", "replace").strip()))
+                "%s failed (exit %d): %s"
+                % (
+                    " ".join(command),
+                    result.returncode,
+                    result.stderr.decode("utf-8", "replace").strip(),
+                )
+            )
         # -z: paths are NUL-terminated and not quoted.
         paths = result.stdout.decode("utf-8").split("\0")
         return _clean(p for p in paths if p)
