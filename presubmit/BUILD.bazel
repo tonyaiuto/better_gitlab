@@ -230,6 +230,7 @@ py_test(
 py_binary(
     name = "backtest_bin",
     srcs = ["backtest_main.py"],
+    # needed because https://github.com/bazel-contrib/rules_python/issues/2943
     imports = [".."],
     main = "backtest_main.py",
     visibility = ["//visibility:public"],
