@@ -1,7 +1,11 @@
 import contextlib
 import io
+import os
+import shutil
 import sys
+import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 
 from run_actions import main as main_lib
 
@@ -106,6 +110,46 @@ class MainTest(unittest.TestCase):
         code, out = _run(["--serial", "bad=exit 3", "ok=echo ok"])
         self.assertEqual(code, 1)
         self.assertRegex(out, "ok\n\x1b\\[0Ksection_end:\\d+:ok\r\x1b\\[0K\n")
+
+    def test_junit_xml(self):
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmpdir)
+        path = os.path.join(tmpdir, "junit.xml")
+        code, out = _run(["--junit_xml=" + path, "bad=echo oops >&2; exit 3", "ok=echo ok"])
+        self.assertEqual(code, 1)
+        # The log shows errors last; the report keeps command line order.
+        self.assertLess(out.index("##### ok\n"), out.index("##### bad\n"))
+        suite = ET.parse(path).getroot().find("testsuite")
+        self.assertEqual(suite.get("tests"), "2")
+        self.assertEqual(suite.get("failures"), "1")
+        bad, ok = suite.findall("testcase")
+        self.assertEqual(bad.get("name"), "bad")
+        self.assertEqual(bad.find("system-err").text, "oops\n")
+        self.assertIsNotNone(bad.find("failure"))
+        self.assertEqual(ok.find("system-out").text, "ok\n")
+        self.assertIsNone(ok.find("failure"))
+
+    def test_no_junit_xml_by_default(self):
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmpdir)
+        old_cwd = os.getcwd()
+        os.chdir(tmpdir)
+        try:
+            _run(["ok=echo ok"])
+        finally:
+            os.chdir(old_cwd)
+        self.assertEqual(os.listdir(tmpdir), [])
+
+    def test_junit_xml_unwritable(self):
+        tmpdir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmpdir)
+        path = os.path.join(tmpdir, "missing_dir", "junit.xml")
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            code, out = _run(["--junit_xml=" + path, "ok=echo ok"])
+        # The actions passed, but the requested report could not be written.
+        self.assertEqual(code, 1)
+        self.assertIn("##### ok\n", out)
+        self.assertIn("could not write junit report", err.getvalue())
 
 
 if __name__ == "__main__":

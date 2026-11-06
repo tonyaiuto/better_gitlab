@@ -34,6 +34,8 @@ class ActionResult:
     # Unix timestamps (whole seconds) taken just before spawn / after exit.
     start_time: int = 0
     end_time: int = 0
+    # Elapsed seconds, from a monotonic clock.
+    duration: float = 0.0
 
     def passed(self) -> bool:
         return self.exit_code == 0

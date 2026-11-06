@@ -19,6 +19,7 @@ def run_one(action: Action) -> ActionResult:
     a failure to start the process; that is reported as exit code 127.
     """
     start_time = int(time.time())
+    start_monotonic = time.monotonic()
     try:
         completed = subprocess.run(["bash", "-c", action.command], capture_output=True)
     except OSError as e:
@@ -31,6 +32,7 @@ def run_one(action: Action) -> ActionResult:
             stderr=message.encode("utf-8", errors="replace"),
             start_time=start_time,
             end_time=end_time,
+            duration=time.monotonic() - start_monotonic,
         )
     end_time = int(time.time())
     return ActionResult(
@@ -40,6 +42,7 @@ def run_one(action: Action) -> ActionResult:
         stderr=completed.stderr,
         start_time=start_time,
         end_time=end_time,
+        duration=time.monotonic() - start_monotonic,
     )
 
 

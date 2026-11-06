@@ -71,6 +71,12 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(r.exit_code, 127)
         self.assertEqual(r.stdout, b"")
         self.assertIn(b"failed to start action", r.stderr)
+        self.assertGreaterEqual(r.duration, 0)
+
+    def test_duration(self):
+        r = runner.run_one(action_lib.parse_action("sleep 0.3", 1000))
+        self.assertGreaterEqual(r.duration, 0.3)
+        self.assertLess(r.duration, 5)
 
 
 if __name__ == "__main__":

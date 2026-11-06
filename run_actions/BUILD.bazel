@@ -8,6 +8,7 @@ py_library(
     srcs = [
         "__init__.py",
         "action.py",
+        "junit.py",
         "main.py",
         "render.py",
         "runner.py",
@@ -40,6 +41,7 @@ py_zipapp_binary(
     )
     for name in [
         "action_test",
+        "junit_test",
         "main_test",
         "render_test",
         "runner_test",

@@ -5,10 +5,11 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from run_actions import action as action_lib
-from run_actions import render, runner
+from run_actions import junit, render, runner
 
 _DESCRIPTION = """\
 Run several actions (single bash command lines), in parallel by default, and
@@ -30,6 +31,10 @@ boolean flags (Bazel style):
       Run actions one at a time, in command line order (default: false).
   --show_errors_last[=true|false], --noshow_errors_last
       Show passing actions first, then failing ones (default: true).
+
+  --junit_xml=PATH
+      After all actions finish, write a JUnit XML report to PATH, with one
+      testcase per action: its timing, exit code, stdout and stderr.
 """
 
 _TRUE_VALUES = ("true", "1", "yes")
@@ -66,7 +71,7 @@ def _normalize_bool_flags(argv: list, names: list) -> list:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="run_actions",
-        usage="%(prog)s [-h] [--[no]serial] [--[no]show_errors_last] action [action ...]",
+        usage="%(prog)s [-h] [--[no]serial] [--[no]show_errors_last] [--junit_xml=PATH] action [action ...]",
         description=_DESCRIPTION,
         epilog=_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -89,6 +94,12 @@ def build_parser() -> argparse.ArgumentParser:
         action=argparse.BooleanOptionalAction,
         default=False,
         help="Report results with datadog-ci tool",
+    )
+    parser.add_argument(
+        "--junit_xml",
+        metavar="PATH",
+        default=None,
+        help=argparse.SUPPRESS,  # Described in the epilog.
     )
     parser.add_argument("actions", nargs="*", metavar="action", help="[name=]command")
     return parser
@@ -116,14 +127,22 @@ def main(argv: list = None) -> int:
         argv = sys.argv[1:]
     args = parse_args(argv)
     actions = action_lib.parse_actions(args.actions)
+    start_monotonic = time.monotonic()
     if args.serial:
         results = runner.run_serial(actions)
     else:
         results = runner.run_parallel(actions)
+    wall_time = time.monotonic() - start_monotonic
     sys.stdout.flush()
     render.render(results, args.show_errors_last, sys.stdout.buffer)
-    cmd = ["datadog-ci", "tag", "--level", "job"]
     overall_return = 0
+    if args.junit_xml is not None:
+        try:
+            junit.write(results, wall_time, args.junit_xml)
+        except OSError as e:
+            print("run_actions: could not write junit report: %s" % e, file=sys.stderr)
+            overall_return = 1
+    cmd = ["datadog-ci", "tag", "--level", "job"]
     for result in results:
         if not result.passed():
             overall_return = 1
