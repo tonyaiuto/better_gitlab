@@ -43,7 +43,7 @@ The section templates follow GitLab's custom collapsible section format
 - ACTION_NAME: the action name (the command itself if no name= was given)
 - ACTION_ID: 1000 + the action's index on the command line
 - SECTION_NAME: ACTION_NAME with every character outside [A-Za-z0-9_.-] replaced
-  by "_", followed by "-" and ACTION_ID. Always a legal and unique GitLab section name.
+  by "_". Always a legal GitLab section name.
 - START_TIME: Unix timestamp (whole seconds) taken just before the action is started
 - END_TIME: Unix timestamp (whole seconds) taken just after the action exits
 - EXIT_CODE: the action's exit code (127 if it could not be started)

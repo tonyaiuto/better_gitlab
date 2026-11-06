@@ -16,22 +16,22 @@ class RenderTest(unittest.TestCase):
         self.assertEqual(
             out.getvalue(),
             b"##### ls /\n"
-            b"\x1b[0Ksection_start:1700000000:ls__-1000[collapsed=true]\r\x1b[0K"
+            b"\x1b[0Ksection_start:1700000000:ls__[collapsed=true]\r\x1b[0K"
             b"\x1b[36;1mRunning ls /\x1b[0;m\n"
             b"hi\n"
             b"warn\n"
-            b"\x1b[0Ksection_end:1700000005:ls__-1000\r\x1b[0K\n",
+            b"\x1b[0Ksection_end:1700000005:ls__\r\x1b[0K\n",
         )
 
     def test_failed_section_not_collapsed(self):
         out = io.BytesIO()
         render.render([_result(1001, "bad", 2)], True, out)
-        self.assertIn(b"section_start:1700000000:bad-1001[collapsed=false]\r", out.getvalue())
+        self.assertIn(b"section_start:1700000000:bad[collapsed=false]\r", out.getvalue())
 
     def test_missing_trailing_newlines_added(self):
         out = io.BytesIO()
         render.render([_result(1000, "x", 0, b"out", b"err")], True, out)
-        self.assertTrue(out.getvalue().endswith(b"\x1b[0;m\nout\nerr\n\x1b[0Ksection_end:1700000005:x-1000\r\x1b[0K\n"))
+        self.assertTrue(out.getvalue().endswith(b"\x1b[0;m\nout\nerr\n\x1b[0Ksection_end:1700000005:x\r\x1b[0K\n"))
 
     def test_raw_bytes_passed_through(self):
         out = io.BytesIO()

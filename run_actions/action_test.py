@@ -48,21 +48,15 @@ class ParseActionTest(unittest.TestCase):
 
 class SectionNameTest(unittest.TestCase):
     def test_legal_name_unchanged(self):
-        self.assertEqual(action_lib.section_name(Action(1000, "lint.go-vet_1", "c")), "lint.go-vet_1-1000")
+        self.assertEqual(action_lib.section_name(Action(1000, "lint.go-vet_1", "c")), "lint.go-vet_1")
 
     def test_spaces_quotes_slashes(self):
         a = Action(1002, "shellcheck './cmd/**/*.sh' \"x\"", "c")
-        self.assertEqual(action_lib.section_name(a), "shellcheck__._cmd_____.sh___x_-1002")
-
-    def test_unique_for_same_name(self):
-        self.assertNotEqual(
-            action_lib.section_name(Action(1000, "ls /", "c")),
-            action_lib.section_name(Action(1001, "ls /", "c")),
-        )
+        self.assertEqual(action_lib.section_name(a), "shellcheck__._cmd_____.sh___x_")
 
     def test_non_ascii_and_control(self):
         a = Action(1000, "caf\u00e9\ttab\nnl:x", "c")
-        self.assertEqual(action_lib.section_name(a), "caf__tab_nl_x-1000")
+        self.assertEqual(action_lib.section_name(a), "caf__tab_nl_x")
 
 
 class VariablesTest(unittest.TestCase):
@@ -73,7 +67,7 @@ class VariablesTest(unittest.TestCase):
             {
                 "ACTION_NAME": "n x",
                 "ACTION_ID": "1000",
-                "SECTION_NAME": "n_x-1000",
+                "SECTION_NAME": "n_x",
                 "START_TIME": "17",
                 "END_TIME": "19",
                 "ESC": "\x1b",
