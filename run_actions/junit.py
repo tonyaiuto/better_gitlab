@@ -47,6 +47,9 @@ def _testcase(parent: ET.Element, result, suite_name: str) -> None:
     ET.SubElement(properties, "property", name="action_id", value=str(result.action.id))
     ET.SubElement(properties, "property", name="command", value=clean_text(result.action.command.encode("utf-8")))
     ET.SubElement(properties, "property", name="exit_code", value=str(result.exit_code))
+    if result.action.ignore_error:
+        # Its failure is still reported; it just does not fail run_actions.
+        ET.SubElement(properties, "property", name="ignore_error", value="true")
     if not result.passed():
         if _is_error(result):
             ET.SubElement(testcase, "error", message="action could not be started", type="SpawnFailure")

@@ -24,6 +24,29 @@ The output of this command should be a sequence of output blocks per action. Des
 For an example of the kinds of single line actions we want to run with this command look at
 $HOME/ws/datadog-agent/.gitlab/build/lint/technical_linters.yml
 
+## Actions files
+
+Actions can also be read from textproto files with `--actions_file=PATH` (repeatable).
+The schema is `ActionList` in `actions.proto`:
+
+    action {
+      name: "lint"
+      script: "ruff check ."
+    }
+    action {
+      name: "flaky"
+      script: "./maybe_fails.sh\n"
+              "echo done"
+      ignore_error: true
+    }
+
+- name and script are required. Names must be unique across all actions in a run.
+- script is run with `bash -c`, like a command line action.
+- ignore_error: the action runs and is reported as usual (a failure is still shown as
+  failed), but its failure does not make run_actions exit with a failure.
+- Actions from files come first, in flag order, then command line actions. ACTION_IDs
+  are assigned in that order.
+
 
 ## Template names
 

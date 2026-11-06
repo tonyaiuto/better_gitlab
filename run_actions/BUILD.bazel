@@ -1,13 +1,28 @@
+load("@protobuf//bazel:proto_library.bzl", "proto_library")
+load("@protobuf//bazel:py_proto_library.bzl", "py_proto_library")
 load("@rules_python//python:py_binary.bzl", "py_binary")
 load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 load("@rules_python//python/zipapp:py_zipapp_binary.bzl", "py_zipapp_binary")
+
+proto_library(
+    name = "actions_proto",
+    srcs = ["actions.proto"],
+    visibility = ["//visibility:public"],
+)
+
+py_proto_library(
+    name = "actions_py_pb2",
+    visibility = ["//visibility:public"],
+    deps = [":actions_proto"],
+)
 
 py_library(
     name = "run_actions_lib",
     srcs = [
         "__init__.py",
         "action.py",
+        "actions_file.py",
         "junit.py",
         "main.py",
         "render.py",
@@ -15,6 +30,7 @@ py_library(
         "templates.py",
     ],
     visibility = ["//visibility:public"],
+    deps = [":actions_py_pb2"],
 )
 
 py_binary(
@@ -41,6 +57,7 @@ py_zipapp_binary(
     )
     for name in [
         "action_test",
+        "actions_file_test",
         "junit_test",
         "main_test",
         "render_test",

@@ -1,0 +1,14 @@
+# proto-file: run_actions/actions.proto
+# proto-message: better_gitlab.run_actions.ActionList
+
+action {
+  name: "hello"
+  script: "echo hello"
+}
+
+action {
+  name: "flaky"
+  script: "echo trying\n"
+          "exit 1"
+  ignore_error: true
+}

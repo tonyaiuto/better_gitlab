@@ -116,6 +116,16 @@ class BuildTest(unittest.TestCase):
         testcase = junit.build([result], 1).getroot().find("testsuite/testcase")
         self.assertEqual(_properties(testcase)["command"], "printf 'red'")
 
+    def test_ignore_error_is_still_a_failure(self):
+        result = _result("flaky", 4)
+        result.action.ignore_error = True
+        root = junit.build([result, _result("ok", 0, id=1001)], 1).getroot()
+        self.assertEqual(root.get("failures"), "1")
+        flaky, ok = root.iter("testcase")
+        self.assertEqual(_properties(flaky)["ignore_error"], "true")
+        self.assertEqual(flaky.find("failure").get("message"), "exit code 4")
+        self.assertNotIn("ignore_error", _properties(ok))
+
 
 class WriteTest(unittest.TestCase):
     def setUp(self):

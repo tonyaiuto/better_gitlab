@@ -23,6 +23,8 @@ class Action:
     id: int
     name: str
     command: str
+    # If true, a failure of this action does not fail run_actions.
+    ignore_error: bool = False
 
 
 @dataclass
@@ -53,12 +55,23 @@ def parse_action(arg: str, id: int) -> Action:
     return Action(id=id, name=arg, command=arg)
 
 
-def parse_actions(args: list) -> list:
+def parse_actions(args: list, first_id: int = BASE_ACTION_ID) -> list:
     """Parses all action arguments, assigning ids in command line order."""
     actions = []
     for index in range(len(args)):
-        actions.append(parse_action(args[index], BASE_ACTION_ID + index))
+        actions.append(parse_action(args[index], first_id + index))
     return actions
+
+
+def duplicate_names(actions: list) -> list:
+    """Returns the names used by more than one action, in first-use order."""
+    seen = set()
+    duplicates = []
+    for action in actions:
+        if action.name in seen and action.name not in duplicates:
+            duplicates.append(action.name)
+        seen.add(action.name)
+    return duplicates
 
 
 def bool_str(value: bool) -> str:

@@ -1,0 +1,23 @@
+// Schema for run_actions actions files, written in textproto format.
+
+syntax = "proto3";
+
+package better_gitlab.run_actions;
+
+// The top-level message of an actions file.
+message ActionList {
+  repeated Action action = 1;
+}
+
+// A script to run.
+message Action {
+  // Required. Unique across all actions in one run_actions invocation.
+  string name = 1;
+
+  // Required. Run with `bash -c`; may span multiple lines.
+  string script = 2;
+
+  // If true, the action is run and reported as usual, but its failure does
+  // not make run_actions exit with a failure.
+  bool ignore_error = 3;
+}

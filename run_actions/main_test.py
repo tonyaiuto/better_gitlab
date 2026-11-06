@@ -152,5 +152,69 @@ class MainTest(unittest.TestCase):
         self.assertIn("could not write junit report", err.getvalue())
 
 
+class ActionsFileTest(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def _write(self, name, text):
+        path = os.path.join(self.tmpdir, name)
+        with open(path, "w") as f:
+            f.write(text)
+        return path
+
+    def test_file_then_command_line_ids(self):
+        first = self._write("a.textproto", 'action { name: "f1" script: "true" }')
+        second = self._write("b.textproto", 'action { name: "f2" script: "true" }')
+        args = main_lib.parse_args(["--actions_file=" + first, "c1=true", "--actions_file", second])
+        actions = main_lib.load_actions(args)
+        self.assertEqual([(a.name, a.id) for a in actions], [("f1", 1000), ("f2", 1001), ("c1", 1002)])
+
+    def test_file_only(self):
+        path = self._write("a.textproto", 'action { name: "f1" script: "echo from_file" }')
+        code, out = _run(["--actions_file=" + path])
+        self.assertEqual(code, 0)
+        self.assertIn("from_file\n", out)
+
+    def test_ignore_error_does_not_fail(self):
+        path = self._write("a.textproto", 'action { name: "flaky" script: "exit 4" ignore_error: true }')
+        code, out = _run(["--actions_file=" + path, "ok=echo ok"])
+        self.assertEqual(code, 0)
+        # Still shown as a failure.
+        self.assertRegex(out, r"section_start:\d+:flaky\[collapsed=false\]")
+
+    def test_ignore_error_in_junit_xml(self):
+        path = self._write("a.textproto", 'action { name: "flaky" script: "exit 4" ignore_error: true }')
+        report = os.path.join(self.tmpdir, "junit.xml")
+        code, _ = _run(["--actions_file=" + path, "--junit_xml=" + report, "ok=echo ok"])
+        self.assertEqual(code, 0)
+        suite = ET.parse(report).getroot().find("testsuite")
+        self.assertEqual(suite.get("failures"), "1")
+        flaky = suite.find("testcase[@name='flaky']")
+        self.assertIsNotNone(flaky.find("failure"))
+        self.assertIsNotNone(flaky.find("properties/property[@name='ignore_error'][@value='true']"))
+
+    def test_failure_without_ignore_error_fails(self):
+        path = self._write("a.textproto", 'action { name: "bad" script: "exit 4" }')
+        code, _ = _run(["--actions_file=" + path, "ok=echo ok"])
+        self.assertEqual(code, 1)
+
+    def test_duplicate_names(self):
+        path = self._write("a.textproto", 'action { name: "x" script: "true" }')
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            code, _ = _run(["--actions_file=" + path, "x=true"])
+        self.assertEqual(code, 2)
+        self.assertIn("duplicate action names: x", err.getvalue())
+
+    def test_bad_file(self):
+        path = self._write("a.textproto", "action {")
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            code, _ = _run(["--actions_file=" + path])
+        self.assertEqual(code, 2)
+        self.assertIn("a.textproto", err.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -9,12 +9,13 @@ import time
 from pathlib import Path
 
 from run_actions import action as action_lib
-from run_actions import junit, render, runner
+from run_actions import actions_file, junit, render, runner
 
 _DESCRIPTION = """\
 Run several actions (single bash command lines), in parallel by default, and
 print each action's captured stdout and stderr as a section once all actions
-have finished. Exits 0 if every action exits 0, otherwise 1.
+have finished. Exits 0 if every action exits 0 (ignoring actions marked
+ignore_error), otherwise 1.
 """
 
 _EPILOG = """\
@@ -26,12 +27,25 @@ action forms:
   named FOO running '1 make'. To set an environment variable, give the action
   a name: name='FOO=1 make'.
 
+actions files:
+  --actions_file=PATH (may be repeated)
+      Read actions from a textproto file of ActionList messages (see
+      actions.proto):
+        action {
+          name: "lint"
+          script: "ruff check ."
+          ignore_error: true   # a failure does not fail run_actions
+        }
+      Actions from files come first, in flag order, then those on the
+      command line. Action names must be unique.
+
 boolean flags (Bazel style):
   --serial[=true|false], --noserial
       Run actions one at a time, in command line order (default: false).
   --show_errors_last[=true|false], --noshow_errors_last
       Show passing actions first, then failing ones (default: true).
 
+reports:
   --junit_xml=PATH
       After all actions finish, write a JUnit XML report to PATH, with one
       testcase per action: its timing, exit code, stdout and stderr.
@@ -71,7 +85,7 @@ def _normalize_bool_flags(argv: list, names: list) -> list:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="run_actions",
-        usage="%(prog)s [-h] [--[no]serial] [--[no]show_errors_last] [--junit_xml=PATH] action [action ...]",
+        usage="%(prog)s [-h] [--[no]serial] [--[no]show_errors_last] [--junit_xml=PATH] [--actions_file=PATH ...] [action ...]",
         description=_DESCRIPTION,
         epilog=_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -101,6 +115,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=argparse.SUPPRESS,  # Described in the epilog.
     )
+    parser.add_argument(
+        "--actions_file",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help=argparse.SUPPRESS,  # Described in the epilog.
+    )
     parser.add_argument("actions", nargs="*", metavar="action", help="[name=]command")
     return parser
 
@@ -117,17 +138,39 @@ def parse_args(argv: list) -> argparse.Namespace:
     parser = build_parser()
     args = parser.parse_intermixed_args(_normalize_bool_flags(flag_args, ["show_errors_last", "serial"]))
     args.actions = args.actions + trailing_actions
-    if len(args.actions) == 0:
-        parser.error("at least one action is required")
+    if len(args.actions) == 0 and len(args.actions_file) == 0:
+        parser.error("at least one action or --actions_file is required")
     return args
 
 
+def load_actions(args: argparse.Namespace) -> list:
+    """Returns the actions from files and then the command line.
+
+    Ids run from BASE_ACTION_ID in that order. Raises actions_file.ParseError
+    for an unreadable or invalid file, or for duplicate action names.
+    """
+    actions = []
+    for path in args.actions_file:
+        actions.extend(actions_file.load(path, action_lib.BASE_ACTION_ID + len(actions)))
+    actions.extend(action_lib.parse_actions(args.actions, action_lib.BASE_ACTION_ID + len(actions)))
+    duplicates = action_lib.duplicate_names(actions)
+    if len(duplicates) > 0:
+        raise actions_file.ParseError("duplicate action names: %s" % ", ".join(duplicates))
+    if len(actions) == 0:
+        raise actions_file.ParseError("no actions to run")
+    return actions
+
+
 def main(argv: list = None) -> int:
+    start_monotonic = time.monotonic()
     if argv is None:
         argv = sys.argv[1:]
     args = parse_args(argv)
-    actions = action_lib.parse_actions(args.actions)
-    start_monotonic = time.monotonic()
+    try:
+        actions = load_actions(args)
+    except actions_file.ParseError as e:
+        print("run_actions: %s" % e, file=sys.stderr)
+        return 2
     if args.serial:
         results = runner.run_serial(actions)
     else:
@@ -144,7 +187,7 @@ def main(argv: list = None) -> int:
             overall_return = 1
     cmd = ["datadog-ci", "tag", "--level", "job"]
     for result in results:
-        if not result.passed():
+        if not result.passed() and not result.action.ignore_error:
             overall_return = 1
         cmd.append("--tags")
         cmd.append("%s:%s" % (result.action.name, "passed" if result.passed() else "failed"))
