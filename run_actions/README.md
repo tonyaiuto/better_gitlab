@@ -9,10 +9,14 @@ code is 0 only if every action passed.
 
 ```sh
 bazel build //run_actions:run_actions
+cp -f "$(bazel info bazel-bin)/run_actions/run_actions.pyz" /tmp/run_actions.pyz
 ```
 
-This produces a self-contained `bazel-bin/run_actions/run_actions.zip`, which
-runs with any `python3`. The examples below use it from the root of this repo.
+`run_actions.pyz` is self-contained, so it can be copied anywhere. Run the copy,
+not the file in Bazel's output tree, and do not use `bazel run`: actions often
+run Bazel themselves, and they could deadlock waiting on the Bazel invocation
+that started run_actions. (`cp -f` is needed because Bazel's outputs are
+read-only.)
 
 ## Actions on the command line
 
@@ -20,7 +24,7 @@ Each argument is an action, written as `name='command'`, or just `'command'`, in
 which case the command is also its name.
 
 ```sh
-python3 bazel-bin/run_actions/run_actions.zip \
+/tmp/run_actions.pyz \
     aaa='echo aaa' \
     bbb='echo bbb >&2; exit 1' \
     'echo ccc'
@@ -54,7 +58,7 @@ action {
 }
 EOF
 
-python3 bazel-bin/run_actions/run_actions.zip --actions_file=my_actions.textproto
+/tmp/run_actions.pyz --actions_file=my_actions.textproto
 echo "exit code: $?"
 ```
 
@@ -65,7 +69,7 @@ more than once. Actions from files come first, in flag order. Action names must
 be unique.
 
 ```sh
-python3 bazel-bin/run_actions/run_actions.zip \
+/tmp/run_actions.pyz \
     --actions_file=my_actions.textproto ccc='echo ccc'
 ```
 
@@ -75,7 +79,7 @@ python3 bazel-bin/run_actions/run_actions.zip \
 its duration, exit code, stdout and stderr.
 
 ```sh
-python3 bazel-bin/run_actions/run_actions.zip \
+/tmp/run_actions.pyz \
     --junit_xml=junit.xml \
     --actions_file=my_actions.textproto
 cat junit.xml
@@ -87,12 +91,6 @@ cat junit.xml
   failure does not stop the rest.
 - `--noshow_errors_last`: show actions in their given order, not failures last.
 - `--help`: all options.
-
-## Running with `bazel run`
-
-`bazel run //run_actions:run_actions_bin -- ...` also works, but the actions run
-inside Bazel's runfiles directory rather than your current directory, so pass
-absolute paths, e.g. `--actions_file="$PWD/my_actions.textproto"`.
 
 See [run_actions.md](run_actions.md) for the full specification of the output
 format.
