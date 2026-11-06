@@ -4,8 +4,10 @@ module(name = "better_github")
 # toolchain that crashes Bazel 8.4.2 (InvalidDottedVersionException in
 # apple_support's exec_libtool).
 bazel_dep(name = "rules_python", version = "2.4.1")
-bazel_dep(name = "protobuf", version = "31.1")
+bazel_dep(name = "protobuf", version = "33.4")
 
 python = use_extension("@rules_python//python/extensions:python.bzl", "python")
 python.defaults(python_version_file = "//:.python-version")
 python.toolchain(python_version = "3.12")
+python_config = use_extension("@rules_python//python/extensions:config.bzl", "config")
+python_config.explicit_init_py(default = True)
